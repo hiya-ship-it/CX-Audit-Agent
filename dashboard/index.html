@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CX Audit Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ══ LOADING OVERLAY ══════════════════════════════════════════════════════ -->
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="loading-content">
+      <div class="loading-spinner">
+        <div class="spinner-ring"></div>
+        <div class="spinner-ring"></div>
+        <div class="spinner-ring"></div>
+      </div>
+      <p class="loading-text">Loading CX Audit Platform…</p>
+      <p class="loading-sub" id="loading-status">Initialising</p>
+    </div>
+  </div>
+
+  <!-- ══ HEADER ════════════════════════════════════════════════════════════════ -->
+  <header class="site-header">
+    <div class="header-orb header-orb--1"></div>
+    <div class="header-orb header-orb--2"></div>
+    <div class="header-orb header-orb--3"></div>
+    <div class="header-inner">
+      <div class="header-brand">
+        <div class="header-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="header-title">CX Audit Platform</h1>
+          <p class="header-subtitle">
+            <span class="header-dot"></span>
+            <span id="header-target">—</span>
+            <span class="header-sep">•</span>
+            <span id="header-date">—</span>
+            <span class="header-sep">•</span>
+            <span id="header-model">—</span>
+          </p>
+        </div>
+      </div>
+      <div class="header-actions">
+<button class="btn btn--primary btn--sm" id="new-audit-btn" title="Start a new audit">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New Audit
+        </button>
+        <button class="btn btn--ghost btn--sm" id="refresh-btn" title="Reload data">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Refresh
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Main navigation ───────────────────────────────────────────────── -->
+    <nav class="main-nav" id="main-nav">
+      <button class="nav-tab nav-tab--active" data-page="dashboard">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </button>
+      <button class="nav-tab" data-page="new-audit">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Run Audit
+      </button>
+      <button class="nav-tab" data-page="issues">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Issues Log
+      </button>
+    </nav>
+  </header>
+
+  <!-- ══ MAIN ══════════════════════════════════════════════════════════════════ -->
+  <main class="main-content">
+
+    <!-- ══ PAGE: DASHBOARD ══════════════════════════════════════════════════════ -->
+    <section id="page-dashboard" class="page page--active">
+
+      <!-- ── Stats row ──────────────────────────────────────────────────── -->
+      <div class="stats-section">
+        <div class="stat-card stat-card--personas">
+          <div class="stat-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div class="stat-body">
+            <span class="stat-value" id="stat-total">—</span>
+            <span class="stat-label">Personas Audited</span>
+          </div>
+        </div>
+        <div class="stat-card stat-card--score">
+          <div class="stat-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </div>
+          <div class="stat-body">
+            <span class="stat-value" id="stat-avg-score">—</span>
+            <span class="stat-label">Avg CX Score</span>
+          </div>
+          <div class="stat-score-bar">
+            <div class="stat-score-fill" id="stat-score-fill"></div>
+          </div>
+        </div>
+        <div class="stat-card stat-card--design" id="stat-card-design" style="display:none">
+          <div class="stat-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+          </div>
+          <div class="stat-body">
+            <span class="stat-value" id="stat-avg-design-score">—</span>
+            <span class="stat-label">Avg Design Score</span>
+          </div>
+          <div class="stat-score-bar">
+            <div class="stat-score-fill stat-score-fill--design" id="stat-design-score-fill"></div>
+          </div>
+        </div>
+<div class="stat-card stat-card--friction">
+          <div class="stat-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div class="stat-body">
+            <span class="stat-value" id="stat-friction">—</span>
+            <span class="stat-label">High-Severity Friction</span>
+          </div>
+        </div>
+      </div>
+
+<section class="controls-section">
+        <div class="search-wrap">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="search-input" placeholder="Search personas…" class="search-input" />
+          <button class="search-clear" id="search-clear" title="Clear">×</button>
+        </div>
+        <div class="sort-wrap">
+          <label class="sort-label">Sort</label>
+          <div class="sort-pills">
+            <button class="sort-pill sort-pill--active" data-sort="default">Default</button>
+            <button class="sort-pill" data-sort="score-asc">Score ↑</button>
+            <button class="sort-pill" data-sort="score-desc">Score ↓</button>
+            <button class="sort-pill" data-sort="name">Name</button>
+          </div>
+        </div>
+        <div class="filter-wrap">
+          <button class="filter-pill filter-pill--active" data-filter="all">All</button>
+          <button class="filter-pill" data-filter="failed"><span class="dot dot--red"></span>Tech Failed</button>
+        </div>
+        <div class="product-filter-wrap" id="product-filter-wrap" style="display:none">
+          <span class="sort-label">Product</span>
+          <div class="product-multiselect" id="product-multiselect">
+            <button type="button" class="product-dropdown-btn" id="product-dropdown-btn">
+              All Products <span class="dropdown-caret">▾</span>
+            </button>
+            <div class="product-dropdown-menu" id="product-dropdown-menu" style="display:none">
+              <!-- populated by JS -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Persona cards ───────────────────────────────────────────────── -->
+      <section class="cards-section">
+        <div class="cards-grid" id="cards-grid"></div>
+        <div class="empty-state" id="empty-state" style="display:none">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <p>No personas match your filter.</p>
+          <button class="btn btn--ghost btn--sm" onclick="resetFilters()">Clear filters</button>
+        </div>
+      </section>
+    </section>
+
+    <!-- ══ PAGE: NEW AUDIT ══════════════════════════════════════════════════════ -->
+    <section id="page-new-audit" class="page">
+      <div class="page-header">
+        <h2 class="page-title">Run CX Audit</h2>
+        <div class="audit-type-switch">
+          <button type="button" class="btn btn--primary btn--sm" id="audit-subtab-web">Web Audit</button>
+          <button type="button" class="btn btn--ghost btn--sm" id="audit-subtab-app">App Audit</button>
+        </div>
+        <p class="page-desc">Configure your audit parameters, choose personas, and launch — the AI agent will navigate the site as each user persona.</p>
+      </div>
+
+      <div class="audit-form-wrap" id="web-audit-panel">
+        <form id="audit-form" class="audit-form">
+
+          <input type="hidden" id="f-business" name="business_name" value="Bajaj Finserv" />
+          <input type="hidden" id="f-url" name="target_url" value="https://www.bajajfinserv.in" />
+
+          <!-- Auth mode -->
+          <div class="form-section">
+            <h3 class="form-section-title">Audit Mode</h3>
+            <div class="auth-mode-cards">
+              <label class="auth-card auth-card--active" id="auth-card-out">
+                <input type="radio" name="auth_mode" value="logged_out" checked hidden />
+                <div class="auth-card-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/></svg>
+                </div>
+                <div>
+                  <div class="auth-card-title">Anonymous / Logged Out</div>
+                  <div class="auth-card-desc">Audit as a new, unauthenticated visitor</div>
+                </div>
+              </label>
+              <label class="auth-card" id="auth-card-in">
+                <input type="radio" name="auth_mode" value="logged_in" hidden />
+                <div class="auth-card-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                </div>
+                <div>
+                  <div class="auth-card-title">Authenticated / Logged In</div>
+                  <div class="auth-card-desc">Use one mobile number through the full audit run</div>
+                </div>
+              </label>
+            </div>
+
+            <!-- Login mobile number (shown when logged_in selected) -->
+            <div id="login-fields" class="login-fields" style="display:none">
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="f-username">Mobile Number <span class="form-required">*</span></label>
+                  <input type="text" id="f-username" name="login_username" class="form-input"
+                    placeholder="9876543210" autocomplete="off" inputmode="numeric" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Starting Point -->
+          <div class="form-section">
+            <h3 class="form-section-title">Starting Point</h3>
+            <div class="auth-mode-cards">
+              <label class="auth-card auth-card--active" id="start-card-homepage">
+                <input type="radio" name="start_from" value="homepage" checked hidden />
+                <div class="auth-card-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                </div>
+                <div>
+                  <div class="auth-card-title">BFL Homepage</div>
+                  <div class="auth-card-desc">Agent starts directly at bajajfinserv.in</div>
+                </div>
+              </label>
+              <label class="auth-card" id="start-card-google">
+                <input type="radio" name="start_from" value="google" hidden />
+                <div class="auth-card-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                </div>
+                <div>
+                  <div class="auth-card-title">Google Search</div>
+                  <div class="auth-card-desc">Agent searches Google, finds &amp; clicks a Bajaj result</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Evaluation Type -->
+          <div class="form-section">
+            <h3 class="form-section-title">Evaluation Type</h3>
+            <div class="auth-mode-cards">
+              <label class="auth-card auth-card--active" id="eval-card-both">
+                <input type="radio" name="eval_type" value="both" checked hidden />
+                <div class="auth-card-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </div>
+                <div>
+                  <div class="auth-card-title">CX + Design Audit <span class="eval-badge eval-badge--both">Default</span></div>
+                  <div class="auth-card-desc">Full audit — CX journey evaluation and design system compliance</div>
+                </div>
+              </label>
+              <label class="auth-card" id="eval-card-cx">
+                <input type="radio" name="eval_type" value="cx" hidden />
+                <div class="auth-card-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                </div>
+                <div>
+                  <div class="auth-card-title">CX Audit Only</div>
+                  <div class="auth-card-desc">Evaluate user journey, friction, and task completion</div>
+                </div>
+              </label>
+              <label class="auth-card" id="eval-card-design">
+                <input type="radio" name="eval_type" value="design" hidden />
+                <div class="auth-card-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+                </div>
+                <div>
+                  <div class="auth-card-title">Design Audit Only</div>
+                  <div class="auth-card-desc">WCAG 2.2 + Bajaj Design System visual compliance</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Personas — file upload OR inline entry (one mandatory) -->
+          <div class="form-section">
+            <h3 class="form-section-title">Personas <span class="form-required">*</span></h3>
+
+            <!-- Mode toggle -->
+            <div class="persona-mode-toggle">
+              <button type="button" class="persona-mode-btn persona-mode-btn--active" id="web-mode-btn-file" data-mode="file">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+                Upload .md File
+              </button>
+              <button type="button" class="persona-mode-btn" id="web-mode-btn-inline" data-mode="inline">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Type Persona Details
+              </button>
+            </div>
+
+            <!-- File upload panel -->
+            <div id="web-file-panel">
+              <div class="form-row form-row--2">
+                <div class="form-group">
+                  <label class="form-label">Choose Persona File</label>
+                  <select id="f-personas-select" name="personas_path" class="form-input form-select">
+                    <option value="">Loading…</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Upload Persona File (.md)</label>
+                  <div class="file-upload-wrap" id="file-upload-wrap">
+                    <input type="file" id="f-personas-file" name="personas_file" accept=".md" class="file-upload-input" />
+                    <div class="file-upload-label" id="file-upload-label">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+                      <span>Drop file or click to browse</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div id="persona-picker" class="persona-picker" style="display:none">
+                <div class="persona-picker-head">
+                  <label class="form-check">
+                    <input type="checkbox" id="persona-select-all" checked />
+                    <span class="form-check-label">Run all personas in this file</span>
+                  </label>
+                  <span class="persona-picker-count" id="persona-picker-count">0 selected</span>
+                </div>
+                <div class="persona-option-list" id="persona-option-list"></div>
+              </div>
+            </div>
+
+            <!-- Inline persona entry panel -->
+            <div id="web-inline-panel" style="display:none">
+              <div id="inline-personas-list" class="inline-personas-list">
+                <!-- persona entry cards injected by JS -->
+              </div>
+              <button type="button" class="btn btn--ghost btn--sm inline-add-btn" id="inline-add-persona-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add Another Persona
+              </button>
+            </div>
+          </div>
+
+          <!-- Advanced options -->
+          <div class="form-section">
+            <h3 class="form-section-title">
+              Advanced Options
+              <button type="button" class="btn btn--ghost btn--xs" id="toggle-advanced">Show</button>
+            </h3>
+            <div id="advanced-fields" style="display:none">
+              <div class="form-row form-row--3">
+                <div class="form-group">
+                  <label class="form-label" for="f-max-steps">Max Steps Per Persona</label>
+                  <input type="number" id="f-max-steps" name="max_steps" class="form-input"
+                    value="35" min="5" max="100" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Submit -->
+          <div class="form-actions">
+            <button type="submit" class="btn btn--primary btn--lg" id="submit-audit-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Launch Audit
+            </button>
+          </div>
+        </form>
+
+        <!-- Running indicator (shown after submit) -->
+        <div id="audit-running-panel" class="running-panel" style="display:none">
+          <div class="running-icon">
+            <div class="spinner-ring"></div>
+          </div>
+          <div class="running-body">
+            <h3 class="running-title">Audit in Progress…</h3>
+            <p class="running-desc" id="running-desc">Agent is navigating the site</p>
+            <div class="running-meta" id="running-meta"></div>
+            <div class="running-actions">
+              <button class="btn btn--ghost btn--sm" id="cancel-run-btn">Cancel</button>
+            </div>
+            <pre class="running-log" id="running-log">Waiting for audit engine...</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ PAGE: APP AUDIT ══════════════════════════════════════════════════════ -->
+    <section id="page-app-audit" class="page">
+      <div class="page-header">
+        <h2 class="page-title">Mobile App Audit</h2>
+        <div class="audit-type-switch">
+          <button type="button" class="btn btn--ghost btn--sm" onclick="showPage('new-audit')">Web Audit</button>
+          <button type="button" class="btn btn--primary btn--sm">App Audit</button>
+        </div>
+        <p class="page-desc">Audit your Android app using Appium automation. Requires Appium server and an emulator or connected device.</p>
+      </div>
+
+      <!-- Setup requirements -->
+      <div class="app-setup-card">
+        <h3 class="setup-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Setup Requirements
+        </h3>
+        <div class="setup-steps">
+          <div class="setup-step">
+            <span class="setup-num">1</span>
+            <div>
+              <strong>Install Appium</strong>
+              <code class="setup-code">npm install -g appium && appium driver install uiautomator2</code>
+            </div>
+          </div>
+          <div class="setup-step">
+            <span class="setup-num">2</span>
+            <div>
+              <strong>Start Appium Server</strong>
+              <code class="setup-code">appium</code>
+            </div>
+          </div>
+          <div class="setup-step">
+            <span class="setup-num">3</span>
+            <div>
+              <strong>Start Android Emulator or connect a device</strong>
+              <code class="setup-code">emulator -avd Pixel_6_API_34</code>
+            </div>
+          </div>
+          <div class="setup-step">
+            <span class="setup-num">4</span>
+            <div>
+              <strong>Create / edit</strong> <code class="setup-code-inline">config/app_config.yaml</code>
+              <span> with your app package details</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="audit-form-wrap">
+        <form id="app-audit-form" class="audit-form">
+
+          <div class="form-section">
+            <h3 class="form-section-title">App Details</h3>
+            <div class="form-row form-row--2">
+              <div class="form-group">
+                <label class="form-label" for="af-business">Business / App Name</label>
+                <input type="text" id="af-business" name="business_name" class="form-input"
+                  placeholder="e.g. Bajaj Finserv App" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="af-package">App Package <span class="form-required">*</span></label>
+                <input type="text" id="af-package" name="app_package" class="form-input" required
+                  placeholder="com.bajajfinserv.app" />
+              </div>
+            </div>
+            <div class="form-row form-row--2">
+              <div class="form-group">
+                <label class="form-label" for="af-activity">App Activity</label>
+                <input type="text" id="af-activity" name="app_activity" class="form-input"
+                  placeholder=".MainActivity (optional)" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="af-device">Device / Emulator Name</label>
+                <input type="text" id="af-device" name="device_name" class="form-input"
+                  value="emulator-5554" />
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3 class="form-section-title">Audit Mode</h3>
+            <div class="auth-mode-cards">
+              <label class="auth-card auth-card--active" id="app-auth-card-out">
+                <input type="radio" name="auth_mode" value="logged_out" checked hidden />
+                <div class="auth-card-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/></svg>
+                </div>
+                <div>
+                  <div class="auth-card-title">Anonymous</div>
+                  <div class="auth-card-desc">Fresh install, not logged in</div>
+                </div>
+              </label>
+              <label class="auth-card" id="app-auth-card-in">
+                <input type="radio" name="auth_mode" value="logged_in" hidden />
+                <div class="auth-card-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                </div>
+                <div>
+                  <div class="auth-card-title">Logged In</div>
+                  <div class="auth-card-desc">Use one mobile number if login appears</div>
+                </div>
+              </label>
+            </div>
+            <div id="app-login-fields" class="login-fields" style="display:none">
+              <div class="form-row form-row--2">
+                <div class="form-group">
+                  <label class="form-label" for="af-mobile">Mobile Number <span class="form-required">*</span></label>
+                  <input type="text" id="af-mobile" name="login_username" class="form-input"
+                    placeholder="9876543210" autocomplete="off" inputmode="numeric" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3 class="form-section-title">Persona File</h3>
+            <div class="form-row form-row--2">
+            <div class="form-group">
+              <label class="form-label">Choose Persona File</label>
+              <select id="af-personas-select" name="personas_path" class="form-input form-select">
+                <option value="">Loading…</option>
+              </select>
+            </div>
+              <div class="form-group">
+                <label class="form-label">Upload Persona File (.md)</label>
+                <div class="file-upload-wrap" id="app-file-upload-wrap">
+                  <input type="file" id="af-personas-file" name="personas_file" accept=".md" class="file-upload-input" />
+                  <div class="file-upload-label" id="app-file-upload-label">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+                    <span>Drop file or click to browse</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div id="app-persona-picker" class="persona-picker" style="display:none">
+              <div class="persona-picker-head">
+                <label class="form-check">
+                  <input type="checkbox" id="app-persona-select-all" checked />
+                  <span class="form-check-label">Run all personas in this file</span>
+                </label>
+                <span class="persona-picker-count" id="app-persona-picker-count">0 selected</span>
+              </div>
+              <div class="persona-option-list" id="app-persona-option-list"></div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn--primary btn--lg" id="submit-app-audit-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Launch App Audit
+            </button>
+          </div>
+        </form>
+
+        <div id="app-audit-running-panel" class="running-panel" style="display:none">
+          <div class="running-icon"><div class="spinner-ring"></div></div>
+          <div class="running-body">
+            <h3 class="running-title">App Audit in Progress…</h3>
+            <p class="running-desc" id="app-running-desc">Agent is exploring the app</p>
+            <div class="running-actions">
+              <button class="btn btn--ghost btn--sm" id="cancel-app-run-btn">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ PAGE: ISSUES LOG ════════════════════════════════════════════════════ -->
+    <section id="page-issues" class="page">
+      <div class="page-header">
+        <h2 class="page-title">Issues Log</h2>
+        <p class="page-desc">All friction points and recommendations surfaced across audit runs, deduplicated by product.</p>
+      </div>
+
+      <!-- Filters -->
+      <div class="issues-filters">
+        <div class="hf-group">
+          <label class="hf-label">Sort By</label>
+          <select id="if-sort" class="hf-input">
+            <option value="priority">Priority</option>
+            <option value="recency">Newest First</option>
+            <option value="recency-asc">Oldest First</option>
+          </select>
+        </div>
+        <div class="hf-group">
+          <label class="hf-label">Product</label>
+          <select id="if-product" class="hf-input">
+            <option value="">All Products</option>
+          </select>
+        </div>
+        <div class="hf-group">
+          <label class="hf-label">Priority</label>
+          <select id="if-priority" class="hf-input">
+            <option value="">All</option>
+            <option value="P1">P1 — Critical</option>
+            <option value="P2">P2 — High</option>
+            <option value="P3">P3 — Medium</option>
+          </select>
+        </div>
+        <div class="hf-group">
+          <label class="hf-label">Audit Type</label>
+          <select id="if-category" class="hf-input">
+            <option value="">All Types</option>
+            <option value="cx">CX Issues</option>
+            <option value="design">Design Issues</option>
+            <option value="accessibility">Accessibility Issues</option>
+            <option value="content">Content Issues</option>
+          </select>
+        </div>
+        <div class="hf-group">
+          <label class="hf-label">Status</label>
+          <select id="if-status" class="hf-input">
+            <option value="">All</option>
+            <option value="open">Open</option>
+            <option value="resolved">Resolved</option>
+          </select>
+        </div>
+        <div class="hf-actions">
+          <button class="btn btn--primary btn--sm" id="if-apply-btn">Apply</button>
+          <button class="btn btn--ghost btn--sm" id="if-reset-btn">Reset</button>
+        </div>
+      </div>
+
+      <!-- Summary strip -->
+      <div class="issues-summary" id="issues-summary"></div>
+
+      <!-- Issue cards list -->
+      <div class="issues-list" id="issues-list">
+        <p class="muted" style="padding:20px 0">Loading issues…</p>
+      </div>
+    </section>
+
+  </main><!-- /main-content -->
+
+  <!-- ══ DETAIL MODAL ══════════════════════════════════════════════════════════ -->
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal" id="detail-modal" role="dialog" aria-modal="true">
+
+      <div class="modal-header">
+        <div class="modal-persona-info">
+          <div class="modal-avatar" id="modal-avatar">?</div>
+          <div>
+            <h2 class="modal-title" id="modal-persona-name">Persona</h2>
+            <p class="modal-intent" id="modal-intent">Intent</p>
+          </div>
+        </div>
+        <div class="modal-header-right">
+          <div class="modal-score-badge" id="modal-score-badge">—</div>
+          <div class="modal-dropoff-badge" id="modal-dropoff-badge">
+            <span class="dropoff-icon" id="modal-dropoff-icon">•</span>
+            <div class="dropoff-text">
+              <span class="dropoff-label" id="modal-dropoff-label">—</span>
+              <span class="dropoff-sub"   id="modal-dropoff-sub"></span>
+            </div>
+          </div>
+          <button class="modal-close" id="modal-close" aria-label="Close">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <nav class="modal-tabs" id="modal-tabs">
+        <button class="modal-tab" data-tab="persona">Persona</button>
+        <button class="modal-tab modal-tab--active" data-tab="overview">Overview</button>
+        <button class="modal-tab" data-tab="journey">Journey</button>
+        <button class="modal-tab" data-tab="friction">Friction &amp; Delight</button>
+        <button class="modal-tab" data-tab="screenshots">Screenshots</button>
+        <button class="modal-tab" data-tab="design-audit" id="modal-tab-design-audit" style="display:none">Design Audit</button>
+        <button class="modal-tab" data-tab="content-analysis" id="modal-tab-content-analysis" style="display:none">Content Analysis</button>
+        <button class="modal-tab" data-tab="accessibility" id="modal-tab-accessibility" style="display:none">Accessibility</button>
+        <button class="modal-tab" data-tab="google-entry" id="modal-tab-google-entry" style="display:none">Google Entry</button>
+        <button class="modal-tab" data-tab="report">Full Report</button>
+        <button class="modal-tab" data-tab="failure">Outcome Notes</button>
+      </nav>
+
+      <div class="modal-body" id="modal-body">
+
+        <!-- ── Persona details panel ── -->
+        <div class="tab-panel" id="panel-persona">
+          <div class="persona-details-grid" id="persona-details-grid">
+            <!-- injected by JS -->
+          </div>
+        </div>
+
+        <!-- ── Overview panel ── -->
+        <div class="tab-panel tab-panel--active" id="panel-overview">
+          <!-- TL;DR -->
+          <div class="overview-tldr" id="overview-verdict"></div>
+          <!-- Key Takeaways -->
+          <div class="overview-key-takeaways" id="overview-key-takeaways" style="display:none"></div>
+          <!-- Quick stat strip -->
+          <div class="overview-stat-strip" id="overview-stat-strip"></div>
+          <!-- Main grid -->
+          <div class="overview-grid">
+            <div class="overview-dimensions">
+              <div class="section-title">CX Dimensions</div>
+              <div class="dimensions-list" id="dimensions-list"></div>
+            </div>
+            <div class="overview-critical" id="overview-critical"></div>
+            <div class="overview-recommendations">
+              <div class="section-title">Top Recommendations</div>
+              <div class="recs-list" id="recs-list"></div>
+            </div>
+            <div class="overview-positives">
+              <div class="section-title">What Worked Well</div>
+              <ul class="positives-list" id="positives-list"></ul>
+            </div>
+          </div>
+          <!-- Intent Fulfillment Gap — full-width, bottom of overview -->
+        </div>
+
+        <!-- ── Journey panel ── -->
+        <div class="tab-panel" id="panel-journey">
+          <div class="journey-header">
+            <div class="journey-meta" id="journey-meta"></div>
+          </div>
+          <div class="journey-timeline" id="journey-timeline"></div>
+        </div>
+
+        <!-- ── Friction panel ── -->
+        <div class="tab-panel" id="panel-failure">
+          <div class="failure-notes" id="failure-notes"></div>
+        </div>
+
+        <div class="tab-panel" id="panel-friction">
+          <div class="friction-summary" id="friction-summary"></div>
+          <div class="friction-list" id="friction-list"></div>
+        </div>
+
+        <!-- ── Screenshots panel ── -->
+        <div class="tab-panel" id="panel-screenshots">
+          <div class="screenshots-toolbar">
+            <span class="ss-count" id="ss-count">0 screenshots</span>
+            <div class="ss-nav">
+              <button class="ss-nav-btn" id="ss-prev">‹</button>
+              <span class="ss-progress" id="ss-progress">1 / 1</span>
+              <button class="ss-nav-btn" id="ss-next">›</button>
+            </div>
+          </div>
+          <div id="screenshots-video"></div>
+          <div class="screenshots-stage" id="screenshots-stage"></div>
+          <div class="screenshots-strip" id="screenshots-strip"></div>
+        </div>
+
+        <!-- ── Design Audit panel ── -->
+        <div class="tab-panel" id="panel-design-audit">
+          <div class="design-audit-content" id="design-audit-content">
+            <!-- injected by JS -->
+          </div>
+        </div>
+
+        <!-- ── Content Analysis panel ── -->
+        <div class="tab-panel" id="panel-content-analysis">
+          <div id="content-analysis-content">
+            <!-- injected by JS -->
+          </div>
+        </div>
+
+        <!-- ── Accessibility panel ── -->
+        <div class="tab-panel" id="panel-accessibility">
+          <div id="accessibility-content">
+            <!-- injected by JS -->
+          </div>
+        </div>
+
+        <!-- ── Google Entry panel ── -->
+        <div class="tab-panel" id="panel-google-entry">
+          <div id="google-entry-content"></div>
+        </div>
+
+        <!-- ── Full Report panel ── -->
+        <div class="tab-panel" id="panel-report">
+          <div class="report-render" id="report-render"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ LIGHTBOX ══════════════════════════════════════════════════════════════ -->
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-close" id="lightbox-close">×</button>
+    <button class="lightbox-nav lightbox-nav--prev" id="lightbox-prev">‹</button>
+    <div class="lightbox-stage">
+      <img class="lightbox-img" id="lightbox-img" src="" alt="" />
+      <p class="lightbox-caption" id="lightbox-caption"></p>
+    </div>
+    <button class="lightbox-nav lightbox-nav--next" id="lightbox-next">›</button>
+  </div>
+
+  <!-- ══ TOAST ══════════════════════════════════════════════════════════════════ -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

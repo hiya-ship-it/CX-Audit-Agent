@@ -1,0 +1,107 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  Mobile App Config  —  CX Audit Agent (Appium / Android)
+#  Update the values in this file for your target app.
+#  Selector discovery: run `adb shell uiautomator dump` or use
+#  Android Studio Layout Inspector to find resource-ids and XPaths.
+# ─────────────────────────────────────────────────────────────────────────────
+
+app:
+  name: "Bajaj Finserv"
+  platform: android
+
+appium_server: "http://localhost:4723"
+
+capabilities:
+  platformName: Android
+  platformVersion: ""              # Leave empty — Appium auto-detects from device
+  deviceName: "emulator-5554"      # `adb devices` to confirm
+  # ── Mobile web browser audit (Chrome on Android) ─────────────────────────
+  browserName: "Chrome"            # Launches Chrome instead of a native app
+  # ── Native app audit (uncomment + fill to use instead of Chrome) ─────────
+  # appPackage: "com.bajajfinserv.mobile"
+  # appActivity: "com.bajajfinserv.mobile.SplashActivity"
+  automationName: UiAutomator2
+  noReset: true
+  fullReset: false
+  autoGrantPermissions: true
+  newCommandTimeout: 120
+  implicitWait: 10
+  uiautomator2ServerLaunchTimeout: 60000
+  chromedriverAutoDownload: true   # Appium downloads matching chromedriver
+  systemPort: 8200
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Selectors  —  Update these after inspecting your app with Layout Inspector
+#  Strategy priority: resource-id > accessibility_id > xpath (last resort)
+# ─────────────────────────────────────────────────────────────────────────────
+
+selectors:
+  login:
+    mobile_field:    "//android.widget.EditText[contains(@hint,'Mobile') or contains(@hint,'mobile')]"
+    otp_field:       "//android.widget.EditText[contains(@hint,'OTP') or contains(@hint,'otp')]"
+    submit_btn:      "//android.widget.Button[@text='Proceed' or @text='LOGIN' or @text='Verify']"
+    skip_btn:        "//android.widget.TextView[@text='Skip' or @text='SKIP']"
+    resend_otp:      "//android.widget.TextView[contains(@text,'Resend')]"
+
+  chatbot:
+    # Floating action button / chat icon
+    open_btn:         "//android.widget.ImageButton[contains(@content-desc,'Chat') or contains(@content-desc,'chat')]"
+    open_btn_alt:     "//android.widget.ImageView[contains(@content-desc,'Chat')]"
+    # Chat input
+    input_field:      "//android.widget.EditText[contains(@hint,'Type') or contains(@hint,'message') or contains(@hint,'Ask')]"
+    send_btn:         "//android.widget.ImageButton[contains(@content-desc,'Send') or contains(@content-desc,'send')]"
+    send_btn_alt:     "//android.widget.Button[@text='Send']"
+    # Response container (last message in list)
+    response_list:    "//androidx.recyclerview.widget.RecyclerView"
+    bot_message:      "//android.view.ViewGroup[contains(@resource-id,'bot') or contains(@resource-id,'message')]"
+    bot_text:         ".//android.widget.TextView"
+    # WebView fallback (for hybrid chatbots)
+    webview_context_prefix: "WEBVIEW"
+
+  navigation:
+    home_tab:         "//android.widget.LinearLayout[@content-desc='Home']"
+    back_btn:         "//android.widget.ImageButton[@content-desc='Navigate up']"
+    menu_btn:         "//android.widget.ImageView[@content-desc='Menu' or @content-desc='More options']"
+
+  common:
+    loading_spinner:  "//android.widget.ProgressBar"
+    toast_msg:        "//android.widget.Toast"
+    dialog_ok:        "//android.widget.Button[@text='OK' or @text='Ok' or @text='ALLOW']"
+    dialog_cancel:    "//android.widget.Button[@text='Cancel' or @text='CANCEL' or @text='Deny']"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Test Account  —  Use a dedicated test account, NEVER production credentials
+# ─────────────────────────────────────────────────────────────────────────────
+
+test_account:
+  mobile: "9999999999"    # Registered test mobile number
+  otp:    "123456"        # Auto-filled OTP for test environment
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Journey Runtime Config
+# ─────────────────────────────────────────────────────────────────────────────
+
+journey:
+  max_steps:             25
+  action_delay_ms:       800       # Wait between actions (ms)
+  element_timeout_secs:  15        # WebDriverWait timeout per element
+  swipe_duration_ms:     600       # Swipe animation speed
+  screenshot_on_failure: true
+  screenshot_on_step:    false     # True = screenshot every step (verbose)
+  retry_count:           3
+  retry_delay_secs:      1.5
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Output
+# ─────────────────────────────────────────────────────────────────────────────
+
+output:
+  logs_dir:        "logs/mobile"
+  reports_dir:     "reports/mobile"
+  screenshots_dir: "screenshots/mobile"
+  json_log:        true
+  csv_log:         true

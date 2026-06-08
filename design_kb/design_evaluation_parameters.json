@@ -1,0 +1,480 @@
+{
+  "version": "3.0",
+  "last_updated": "2026-05-21",
+  "description": "Combined Design & Accessibility evaluation framework. Covers visual craft quality and WCAG 2.2 A/AA compliance as a single integrated audit. Deliberately excludes dimensions already owned by the CX audit (journey outcomes, task flow, trust signals, content quality, error recovery, navigation efficiency).",
+  "audit_scope": "Visual design quality + WCAG 2.2 A/AA implementation — assessed from screenshots. Not: user journey outcomes, task completion, content strategy, or behavioural flows.",
+  "framework_sources": [
+    "WCAG 2.2 — Web Content Accessibility Guidelines (W3C, 2023)",
+    "Gestalt Principles of Visual Perception",
+    "Google Material Design 3 — Visual & Accessibility guidelines",
+    "Apple Human Interface Guidelines — Visual design & accessibility",
+    "Baymard Institute — Form & Component UX benchmarks",
+    "Bajaj Finserv Design Principles (Design Creation, Design Application, Functionality Guidelines)"
+  ],
+  "scoring_scale": {
+    "9-10": "Exemplary — fully realised, no observable issues. Meets or exceeds all relevant standards.",
+    "7-8": "Strong — well-executed with only minor gaps. Follows best practices with isolated exceptions.",
+    "5-6": "Acceptable — minimum standards mostly met but notable gaps visible. Needs improvement.",
+    "3-4": "Weak — significant problems that degrade the experience or violate standards. Needs priority fixes.",
+    "0-2": "Critical failure — violates the core intent of this dimension. Causes user harm, task failure, or a clear WCAG A/AA breach."
+  },
+  "issue_severity": {
+    "critical": "Causes task failure, data loss, or is a WCAG Level A violation. Must fix before launch.",
+    "high": "WCAG Level AA violation or major visual quality failure. Fix in next sprint.",
+    "medium": "Noticeable deviation from standards or Bajaj principles without being a WCAG breach. Fix near-term.",
+    "low": "Polish-level inconsistency. Minor and non-blocking."
+  },
+  "dimensions": [
+    {
+      "id": 1,
+      "name": "Typography System Execution",
+      "weightage": 11,
+      "definition": "Evaluate the consistency, readability, scalability, accessibility, and visual effectiveness of typography across the interface — covering font hierarchy, heading/body differentiation, font scaling, line height, spacing, and legibility across sections and devices.",
+      "what_this_is_not": "Not about whether content is readable to the user as a journey outcome (that is CX). This is about whether the designer correctly executed the type system at pixel level.",
+      "standards": [
+        "WCAG 2.2 SC 1.4.4 — Resize Text (AA): text must scale to 200% without loss of content",
+        "WCAG 2.2 SC 1.4.12 — Text Spacing (AA): no content loss when line-height ≥1.5x, letter-spacing ≥0.12em",
+        "Bajaj: Crisp & Clear fonts — defined size, weight, line height per content level",
+        "Bajaj: separate height defined for header/subtitle vs body",
+        "Material Design: minimum 12sp caption, 14sp body, 16sp+ primary body"
+      ],
+      "screenshot_checks": [
+        "Are there at least 3 visually distinct typographic levels (heading → body → caption)?",
+        "Is body text at least 14px? Is it meaningfully larger than captions or footnotes?",
+        "Is line height generous — text lines not cramped together?",
+        "Are font weights used with intention — bold for headings, regular for body, not all one weight?",
+        "Is a single font family applied consistently — or are multiple families mixed without purpose?",
+        "Are financial figures (amounts, rates, EMI) in a larger or heavier style than surrounding text?",
+        "Is typography rhythm balanced — consistent scale across sections?",
+        "Does heading/body differentiation remain clear across all visible pages?"
+      ],
+      "scoring_rubric": {
+        "9-10": "Excellent typography execution: 3+ clear typographic levels, consistent font usage, comfortable readability, proper spacing and line height, strong visual rhythm, accessible text presentation.",
+        "7-8": "Strong typography system with minor inconsistencies — e.g. subheadings and body text too similar in size, or line height tight in one section.",
+        "5-6": "Moderate typography issues affecting readability and cohesion — only 2 visible levels, or most text at similar size/weight.",
+        "3-4": "Weak typography hierarchy causing usability friction — no meaningful hierarchy, overcrowded text blocks, misaligned typography.",
+        "0-2": "Severely poor typography significantly harming readability and accessibility — all text same weight/size, dense unreadable blocks."
+      },
+      "common_violations": [
+        "Disclaimer or T&C text indistinguishably small versus body text",
+        "All text rendered in the same font weight with no emphasis",
+        "Line height so tight that text lines appear to merge",
+        "Interest rate or EMI figure presented in the same size as surrounding body copy",
+        "Multiple font families mixed with no design rationale",
+        "Excessive typography variations with no consistent scale"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Color System Application & Contrast",
+      "weightage": 11,
+      "definition": "Evaluate the effectiveness, consistency, accessibility, and usability of color usage across the interface — covering WCAG contrast compliance, functional color usage, CTA visibility, state color differentiation, brand color consistency, and text/background readability.",
+      "what_this_is_not": "Not about whether colour makes users trust the brand (that is CX). This is about pixel-level contrast measurement and palette correctness.",
+      "standards": [
+        "WCAG 2.2 SC 1.4.3 — Contrast Minimum (AA): 4.5:1 for normal text, 3:1 for large text (18pt or 14pt bold)",
+        "WCAG 2.2 SC 1.4.11 — Non-text Contrast (AA): 3:1 for UI components (input borders, focus rings, icon outlines)",
+        "WCAG 2.2 SC 1.4.1 — Use of Colour (A): colour must not be the sole means of conveying information",
+        "Bajaj: brand colour palette applied correctly — no off-brand colours introduced without purpose",
+        "Bajaj: semantic colours correct — green for success, red for error, amber for warning"
+      ],
+      "screenshot_checks": [
+        "Does body text appear clearly readable against its background — not light grey on white?",
+        "Are CTA buttons visually distinct from the page background with strong contrast?",
+        "Are form field borders visible against the page background (not invisible on white)?",
+        "Are error, success, and warning states accompanied by icon or text — not colour alone?",
+        "Are disabled elements visually distinct from enabled ones beyond just colour?",
+        "Are link colours distinguishable from surrounding body text?",
+        "Is brand color applied consistently across all visible sections?"
+      ],
+      "scoring_rubric": {
+        "9-10": "Excellent color implementation: accessible contrast ratios, consistent color language, clear CTA emphasis, effective state communication, strong visual differentiation.",
+        "7-8": "Strong color system with minor contrast or consistency issues — e.g. secondary text slightly light, or one form border barely visible against white.",
+        "5-6": "Moderate color inconsistencies affecting usability — noticeable contrast issues on secondary content, or one semantic state relies solely on colour.",
+        "3-4": "Weak contrast and poor visual communication — visually obvious failures, light grey text on white, nearly invisible form borders.",
+        "0-2": "Severe accessibility and readability failures caused by poor color implementation — multiple WCAG 1.4.3 violations, error states marked only by colour."
+      },
+      "common_violations": [
+        "Light grey placeholder or helper text nearly indistinguishable from the background",
+        "CTA button text at borderline contrast against button background colour",
+        "Form input border invisible against white page background",
+        "Error state shown only as a red border — no error icon or text",
+        "Off-brand accent colour introduced in a promotional section",
+        "Ambiguous state colors with no supporting text or icon differentiation"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Layout Grid & Spatial Rhythm",
+      "weightage": 10,
+      "definition": "Evaluate layout structure, spacing consistency, alignment quality, and spatial organization — covering grid consistency, alignment precision, spacing rhythm, white space usage, layout organization, section grouping, and structural balance.",
+      "what_this_is_not": "Not about whether users can navigate or find content (that is CX). This is about whether the layout grid is correctly executed.",
+      "standards": [
+        "WCAG 2.2 SC 1.4.10 — Reflow (AA): content must not require horizontal scrolling at 320px viewport width",
+        "WCAG 2.2 SC 1.3.4 — Orientation (AA): content not restricted to one screen orientation",
+        "Bajaj: clear compartments — distinguishable separators, defined gutter space between components",
+        "Bajaj: margin & spacing defined in library — consistent application expected",
+        "Material Design: 8dp base grid — all spacing values multiples of 8 (or 4 for fine-grained)"
+      ],
+      "screenshot_checks": [
+        "Is there consistent left/right margin — content not running edge-to-edge?",
+        "Are sections clearly separated — not bleeding into each other?",
+        "Are cards and containers consistently padded internally?",
+        "Do similar components (two cards, two form fields) have the same spacing between them?",
+        "Is whitespace used intentionally as a separator, or does the layout feel uniformly dense?",
+        "Does content appear to fit within the viewport — no obvious horizontal overflow?",
+        "Is spatial organization predictable and balanced across sections?"
+      ],
+      "scoring_rubric": {
+        "9-10": "Highly polished layouts: consistent margins and gutters, effective whitespace usage, predictable structure, clean spatial organization, balanced layouts.",
+        "7-8": "Strong layout organization with minor spacing inconsistencies — isolated deviations, one section with tighter padding, or card spacing slightly varies.",
+        "5-6": "Moderate layout weaknesses affecting cohesion — spacing inconsistent, some sections cramped, margins vary across pages.",
+        "3-4": "Weak structural organization causing confusion — no apparent grid, elements misaligned, sections bleed into each other.",
+        "0-2": "Severely disorganized layouts significantly harming usability — content runs edge-to-edge, chaotic visual structure, poor grouping."
+      },
+      "common_violations": [
+        "Text or cards running flush to screen edge with zero margin",
+        "Two cards of the same type with different internal padding",
+        "Sections stacked with no visible gutter — they blur into each other",
+        "One page section with tight padding while adjacent sections are generous",
+        "Content visible overflowing horizontally on a mobile viewport",
+        "Poor section grouping making structure unclear"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Visual Hierarchy & Attention Guidance",
+      "weightage": 11,
+      "definition": "Evaluate how effectively the design guides user attention toward important content and actions — covering CTA prominence, visual prioritization, reading flow, emphasis hierarchy, attention distribution, primary vs secondary action clarity, and scanning patterns.",
+      "what_this_is_not": "Not about whether users can find information in a journey (that is CX 'Visual Hierarchy and Scannability'). This is about whether the size/weight/contrast system is correctly designed to guide attention.",
+      "standards": [
+        "WCAG 2.2 SC 1.3.1 — Info and Relationships (A): visual structure should encode information hierarchy",
+        "Gestalt principles: figure-ground, similarity, proximity — applied to information architecture",
+        "Bajaj: primary actions and objectives within the first 2 folds",
+        "Bajaj: reduce cognitive load — visual weight directs attention to what matters"
+      ],
+      "screenshot_checks": [
+        "Can you identify the single most visually dominant element in under 3 seconds?",
+        "Are there at least 3 distinct visual weight levels — primary (largest/boldest), secondary, tertiary?",
+        "Do secondary elements clearly recede — smaller, lighter, or lower contrast than primary?",
+        "Is the primary CTA visually heavier than secondary actions on the same screen?",
+        "Are key financial figures (rate, EMI, tenure) visually elevated above surrounding text?",
+        "Is promotional/decorative content visually subordinate to functional content?",
+        "Are focal points clear or do competing elements create attention confusion?"
+      ],
+      "scoring_rubric": {
+        "9-10": "Excellent attention guidance: clear focal points, strong CTA visibility, effective prioritization, logical reading flow, clear visual grouping — eye immediately lands on most important element.",
+        "7-8": "Strong hierarchy with minor prioritization issues — e.g. primary and secondary CTAs at the same visual weight, or financial figures in body text style.",
+        "5-6": "Moderate hierarchy weaknesses affecting scanability — multiple elements compete at same level, or the most important element is not the most visually prominent.",
+        "3-4": "Weak hierarchy causing confusion and friction — competing focal points, weak CTA emphasis, poor prioritization.",
+        "0-2": "Severely ineffective hierarchy significantly harming usability — flat design, everything same weight, no dominant element, page intent unclear."
+      },
+      "common_violations": [
+        "Two buttons on the same screen with identical visual treatment (filled + filled)",
+        "EMI or interest rate figure in normal body text weight alongside product description",
+        "Hero banner image dominating the viewport while the primary CTA is small and low-contrast",
+        "Section headings barely larger than body text",
+        "Promotional tag or badge visually larger than the product's key financial metric",
+        "Cluttered attention flow with no clear reading path"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Component Design Quality & System Consistency",
+      "weightage": 10,
+      "definition": "Evaluate the consistency, scalability, and visual reliability of reusable UI components and patterns — covering component consistency, button styling, card structures, input styling, reusable pattern consistency, design system adherence, state consistency, and predictability of components.",
+      "what_this_is_not": "Not about whether components function correctly in a flow (that is CX). This is about whether each component is visually well-crafted and systemically consistent.",
+      "standards": [
+        "Bajaj: re-use & re-purpose — components from the design library, not one-off bespoke designs",
+        "Bajaj: flat learning curve — widely accepted component patterns applied correctly",
+        "Material Design 3: component proportions — button height 40dp, input height 56dp, card elevation",
+        "Apple HIG: consistent corner radius, weight, and shadow across component types"
+      ],
+      "screenshot_checks": [
+        "Do primary buttons have a filled background with sufficient internal padding (not cramped text)?",
+        "Do cards use a consistent corner radius and elevation across the page?",
+        "Do input fields appear tall enough to tap easily — not hairline-thin?",
+        "Are chips, tags, and badges proportional — not oversized or too small relative to their label?",
+        "Do components look complete — no rough edges, unbalanced padding, or misaligned internal elements?",
+        "Is the visual finish consistent — not some components looking polished and others looking draft-quality?",
+        "Are interaction patterns consistent and predictable across all component instances?"
+      ],
+      "scoring_rubric": {
+        "9-10": "Excellent component consistency: unified component system, consistent interaction patterns, scalable reusable components, predictable behaviors, strong visual cohesion — mature design system quality.",
+        "7-8": "Strong component quality with minor inconsistencies — one component type appears rough, e.g. input fields too thin or card corner radii inconsistent.",
+        "5-6": "Moderate inconsistencies affecting cohesion — component quality uneven, some polished, some clearly draft, noticeable proportion or padding issues.",
+        "3-4": "Weak component quality causing fragmentation — multiple components appear unfinished, conflicting interaction patterns, weak design system cohesion.",
+        "0-2": "Severely inconsistent component system significantly harming usability — no system discipline, visual fragmentation, unpredictable component behavior."
+      },
+      "common_violations": [
+        "CTA button with text almost touching the button border (insufficient horizontal padding)",
+        "Cards with different border-radius values on the same screen (e.g. 4px and 12px)",
+        "Input field so thin it appears unclickable (less than 36px height on mobile)",
+        "Badge or chip with text overflowing its container",
+        "Bottom sheet with misaligned handle indicator or inconsistent corner radius",
+        "Visual fragmentation between component types breaking design system cohesion"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Interactive States & Focus Design",
+      "weightage": 8,
+      "definition": "Evaluate the visibility, accessibility, and usability of interaction states and focus behaviors — covering hover states, active states, focus visibility, disabled states, keyboard accessibility, state differentiation, and interaction feedback.",
+      "what_this_is_not": "Not about whether users can navigate or control flows (that is CX 'User Control and Flexibility'). This is about whether states are visually designed at component level.",
+      "standards": [
+        "WCAG 2.2 SC 2.4.7 — Focus Visible (AA): keyboard focus indicator must be visible",
+        "WCAG 2.2 SC 2.4.11 — Focus Appearance (AA): focus indicator must have 3:1 contrast and enclose the component",
+        "WCAG 2.2 SC 1.4.1 — Use of Colour (A): disabled state must not rely on colour alone",
+        "Bajaj: clear action callouts — interactive elements visually distinct in all states"
+      ],
+      "screenshot_checks": [
+        "Are disabled form fields or buttons visually different from their enabled state — reduced opacity or muted colour?",
+        "If any element shows a focus state in the screenshot, is the focus ring clearly visible (not a faint dotted line)?",
+        "Do selected tabs, active steps, or chosen options show a clear visual active state?",
+        "Are pressed/active states on buttons designed — or do buttons look identical before and after tap?",
+        "Are toggle switches, checkboxes, and radio buttons clearly designed in both checked and unchecked states?",
+        "Is keyboard accessibility visible through clearly designed focus indicators?"
+      ],
+      "scoring_rubric": {
+        "9-10": "Excellent interaction state visibility: clear focus indicators, distinct interaction states, accessible keyboard navigation, predictable interaction behavior, strong feedback visibility.",
+        "7-8": "Strong interaction design with minor issues — most states designed but one is weak, e.g. disabled state only slightly muted or selected tab only indicated by colour.",
+        "5-6": "Moderate state inconsistencies affecting usability — some interactive elements have states, others appear identical in all states.",
+        "3-4": "Weak state visibility causing interaction confusion — disabled looks same as enabled, active tab indistinguishable from inactive.",
+        "0-2": "Severely inaccessible or unclear interaction states — states largely absent, invisible focus indicators, no keyboard accessibility support."
+      },
+      "common_violations": [
+        "Disabled button identical in appearance to the enabled button except for being slightly greyed",
+        "Active navigation tab differentiated only by a barely visible colour shift",
+        "Radio button selected state indistinguishable from unselected at a glance",
+        "Step indicator in a multi-step form not visually showing the current step vs completed steps",
+        "Toggle switch with no visible on/off label and only colour to differentiate states",
+        "Missing or invisible keyboard focus indicators"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "Iconography & Visual Communication Quality",
+      "weightage": 6,
+      "definition": "Evaluate the clarity, consistency, recognizability, and effectiveness of icons and visual communication elements — covering icon consistency, semantic clarity, visual recognizability, symbol interpretation, supporting visual cues, and style consistency.",
+      "what_this_is_not": "Not about whether users understand navigation (that is CX). This is about the visual quality and accessibility of the icon set itself.",
+      "standards": [
+        "WCAG 2.2 SC 1.1.1 — Non-text Content (A): icons that convey information must have a text alternative",
+        "WCAG 2.2 SC 1.3.3 — Sensory Characteristics (A): instructions must not rely solely on shape, icon, or visual position",
+        "Bajaj: icons over images — graphical symbols preferred for functionality over photographic images",
+        "Bajaj: icons must be self-explanatory or accompanied by text labels",
+        "Material Design: icon size system — 16/20/24/32dp; consistent weight (outlined or filled, not mixed)"
+      ],
+      "screenshot_checks": [
+        "Are all standalone navigation or action icons accompanied by a visible text label?",
+        "Are icons from a consistent visual set — all line-weight, all filled, or all outlined — not mixed?",
+        "Do icons appear at a consistent size (e.g. all navigation icons 24px, all inline icons 16px)?",
+        "Are functional icons (menu, search, back, close) clearly recognisable — not ambiguous custom illustrations?",
+        "Are product/feature icons accompanied by text — no icon-only product navigation on mobile?",
+        "Are icons used where they add clarity, or are they purely decorative?"
+      ],
+      "scoring_rubric": {
+        "9-10": "Excellent icon clarity: clear icon meanings, consistent visual style, intuitive communication, strong recognizability, helpful supporting visuals — all standalone icons labelled.",
+        "7-8": "Strong iconography with minor clarity issues — one icon type breaks the style, or 1–2 standalone icons without labels.",
+        "5-6": "Moderate communication inconsistencies — inconsistent icon style across the page, or multiple standalone navigation icons without labels.",
+        "3-4": "Weak icon clarity affecting usability — ambiguous icons, inconsistent icon styles, confusing symbolism.",
+        "0-2": "Severely confusing or inconsistent visual communication — icon-only navigation with no labels, mixed styles and sizes, icons replacing text where text is clearer."
+      },
+      "common_violations": [
+        "Bottom navigation bar with icons and no text labels",
+        "Mix of outlined and filled icons on the same screen",
+        "Product category navigation using icon-only tiles on mobile",
+        "Custom illustration used as an action icon — ambiguous meaning",
+        "Icons at different sizes (16px and 32px) within the same navigation row",
+        "Decorative icon overload adding visual noise without aiding comprehension"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "Touch Ergonomics & Spatial Accessibility",
+      "weightage": 8,
+      "definition": "Evaluate touch usability, spatial accessibility, and ergonomic quality of touch interactions — covering touch target sizing, touch spacing, reachability, tap accuracy, mobile ergonomics, gesture accessibility, and interaction comfort.",
+      "what_this_is_not": "Not about whether mobile experience supports user journeys (that is CX 'Mobile and Touch Experience'). This is about the pixel-level sizing implementation of interactive elements.",
+      "standards": [
+        "WCAG 2.2 SC 2.5.8 — Target Size Minimum (AA): 24x24 CSS px minimum; if smaller, 24px spacing required around it",
+        "WCAG 2.2 SC 2.5.5 — Target Size Enhanced (AAA): 44x44 CSS px recommended",
+        "Bajaj Functionality Guidelines: minimum 40x40px tap target for close/back/navigation icons",
+        "Bajaj: tapability & reachability — sufficient spacing around tappable elements to prevent accidental taps",
+        "Google Material Design: 48dp minimum touch target recommendation"
+      ],
+      "screenshot_checks": [
+        "Do primary CTA buttons appear at least 44px tall — visually generous, not hairline?",
+        "Are small icons (close ✕, info ⓘ, filter, share) appearing to have an extended tap area or sufficient visual size?",
+        "Are adjacent tappable elements (two buttons, radio options, list items) spaced apart — not directly touching?",
+        "Are form field input areas visually tall enough to tap without precision (aim for 44px+)?",
+        "Are text-only links used as the sole action in areas where a button would provide a larger target?",
+        "Are tappable list items in menus or drawers given enough vertical height to tap accurately?",
+        "Are interactive areas comfortable to reach with a thumb on a standard mobile viewport?"
+      ],
+      "scoring_rubric": {
+        "9-10": "Excellent touch ergonomics: comfortable touch interactions, proper touch spacing, accessible touch targets, mobile-friendly ergonomics, reduced accidental interactions.",
+        "7-8": "Strong touch usability with minor issues — primary CTAs adequate but some secondary interactive elements appear small.",
+        "5-6": "Moderate touch usability concerns — multiple small interactive elements visible, critical targets immediately adjacent.",
+        "3-4": "Weak ergonomics causing usability friction — small touch targets, crowded interactive areas, poor reachability, accidental tap risk.",
+        "0-2": "Severely inaccessible touch interactions — critical interactive elements clearly undersized, close button appears tiny with no padding."
+      },
+      "common_violations": [
+        "Close (✕) icon rendered at 16px with no surrounding tap zone",
+        "Two adjacent filter icons with less than 8px spacing between tap areas",
+        "Form input field less than 36px tall making tap inaccurate",
+        "Text-only 'Change' or 'Edit' links with no button treatment in a critical flow",
+        "Radio button options stacked with less than 4px vertical gap between rows",
+        "Weak touch accessibility for users with motor impairments"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "Form Design & Label Accessibility",
+      "weightage": 8,
+      "definition": "Evaluate the usability, accessibility, clarity, and completion efficiency of forms and input systems — covering label clarity, input readability, validation visibility, form grouping, required field communication, accessibility support, and completion ease.",
+      "what_this_is_not": "Not about whether forms are easy to complete in a journey (that is CX 'Form Design and Data Collection UX'). This is about the visual and WCAG implementation of form components.",
+      "standards": [
+        "WCAG 2.2 SC 1.3.1 — Info and Relationships (A): labels must be programmatically associated (persistent visible label is the observable proxy)",
+        "WCAG 2.2 SC 3.3.1 — Error Identification (A): errors must be described in text, not only visually",
+        "WCAG 2.2 SC 3.3.2 — Labels or Instructions (A): every input must have a visible label",
+        "WCAG 2.2 SC 3.3.4 — Error Prevention (AA): for financial data entry, reversibility or review step required",
+        "Bajaj: relatable structuring — logically grouped fields; all demographic fields clustered together"
+      ],
+      "screenshot_checks": [
+        "Does every visible input field have a persistent text label above or beside it — not placeholder text alone?",
+        "Are required fields clearly marked — asterisk, 'Required' label, or equivalent — not colour alone?",
+        "Are related fields visually grouped (e.g. personal details in one card, financial details in another)?",
+        "If an error state is visible — does it show a specific error message in text below the field, not just a red border?",
+        "Are sensitive fields (PAN, Aadhaar, bank details) accompanied by an info icon or trust note?",
+        "Are form fields visually single-column on mobile — not side-by-side in a two-column layout?",
+        "Is completion flow smooth with logical field sequencing and clear navigation?"
+      ],
+      "scoring_rubric": {
+        "9-10": "Excellent form usability and accessibility: clear labels, logical grouping, helpful validation, accessible input design, smooth completion flow — all fields have persistent visible labels.",
+        "7-8": "Strong form experience with minor issues — one field uses placeholder-only labelling, or error state shows red border without text description.",
+        "5-6": "Moderate usability concerns affecting completion — 2+ fields use placeholder-only labels, error marking relies on colour alone.",
+        "3-4": "Weak form structure causing friction — missing labels, confusing forms, weak validation messaging, accessibility barriers.",
+        "0-2": "Severely unusable or inaccessible forms — placeholder-only labels throughout, no error text descriptions, chaotic field order."
+      },
+      "common_violations": [
+        "OTP input field with placeholder '• • • •' and no visible label",
+        "PAN number field with only placeholder text 'Enter PAN' — label disappears on focus",
+        "Required field marked only by making the border red when empty — no asterisk or label",
+        "Error state shown as red border only — no text explaining what is wrong or how to fix it",
+        "Mobile form with two fields side-by-side forcing horizontal eye movement",
+        "Ambiguous input fields with unclear expected format or content"
+      ]
+    },
+    {
+      "id": 10,
+      "name": "System Feedback & Status Visibility",
+      "weightage": 6,
+      "definition": "Evaluate how effectively the interface communicates status, progress, and system responsiveness — covering loading indicators, progress visibility, confirmation states, error/success messaging, wait-state communication, and responsiveness feedback.",
+      "what_this_is_not": "Not about whether the system gives users enough feedback in a journey (that is CX 'System Feedback and Load Experience'). This is about whether the visual design of feedback components meets standards.",
+      "standards": [
+        "WCAG 2.2 SC 4.1.3 — Status Messages (AA): status messages must be perceivable without receiving focus",
+        "WCAG 2.2 SC 1.4.1 — Use of Colour (A): status must not be conveyed by colour alone",
+        "Bajaj: relevant assistance — in-context feedback related to the user's current state",
+        "Bajaj: avoid dead ends — journey-end screens always show a next action",
+        "Material Design: loading states (skeleton, circular progress), toast/snackbar, inline error design"
+      ],
+      "screenshot_checks": [
+        "If a loading state is visible — is it a spinner, skeleton, or progress bar (not a blank white screen)?",
+        "If a success state is visible — does it use a green icon + text confirmation (not green colour alone)?",
+        "If an error state is visible — does it use a red icon + specific error text (not red colour alone)?",
+        "Are toast notifications visually styled distinctly — not just plain text appearing on the page?",
+        "Is the empty state screen (no results, no data) designed with an illustration or icon + message?",
+        "Are status banners positioned where they will be immediately noticed?",
+        "Is system responsiveness clearly communicated to avoid user uncertainty?"
+      ],
+      "scoring_rubric": {
+        "9-10": "Excellent feedback visibility: clear loading communication, transparent progress indicators, timely confirmations, predictable system feedback — all visible feedback states use icon + text.",
+        "7-8": "Strong status communication with minor gaps — most states designed but one relies on colour alone, or one status message positioned poorly.",
+        "5-6": "Moderate inconsistencies affecting clarity — success or error states designed but one is colour-only, loading states may be blank.",
+        "3-4": "Weak feedback visibility causing uncertainty — missing feedback, invisible loading states, delayed communication, ambiguous status messaging.",
+        "0-2": "Severely inadequate or missing feedback systems — multiple feedback states rely solely on colour, loading states are blank screens."
+      },
+      "common_violations": [
+        "Success confirmation shown as green text only — no icon or visual emphasis",
+        "Error state on a form shown only as a red border with no icon or text",
+        "Loading screen is a blank white page with no indicator",
+        "Empty search results shown as a blank list — no illustration, message, or suggestion",
+        "Status banner appearing at the very bottom of a long screen below the fold",
+        "Weak responsiveness indicators leaving users uncertain about system state"
+      ]
+    },
+    {
+      "id": 11,
+      "name": "Brand Identity & Visual Consistency",
+      "weightage": 5,
+      "definition": "Evaluate the cohesiveness, recognizability, and consistency of visual branding across the interface — covering brand styling consistency, visual identity cohesion, asset consistency, tone alignment, aesthetic consistency, and brand recognizability.",
+      "what_this_is_not": "Not about whether users trust Bajaj as a brand (that is CX 'Trust and Credibility'). This is about visual design coherence across screens.",
+      "standards": [
+        "Bajaj: re-use & re-purpose — consistent use of design library components",
+        "Bajaj: crisp & clear fonts — brand typography applied uniformly",
+        "Bajaj: design creation principle — usability over marketing, no dark-pattern visual tricks",
+        "ISO 9241-110 — Conformity with user expectations: consistent appearance across the product",
+        "Cognitive accessibility: consistent design language reduces the mental effort required to learn new screens"
+      ],
+      "screenshot_checks": [
+        "Does every screen feel like it belongs to the same product — consistent colour, type, and component style?",
+        "Are the brand's primary colours used correctly across all screens (not replaced by off-brand alternatives)?",
+        "Is the header/navigation bar visually identical across all screens?",
+        "Is the photography or illustration style consistent — not mixing stock photography and custom illustration?",
+        "Are promotional screens using the same design language as functional screens?",
+        "Does the overall aesthetic feel professionally unified or like multiple designers worked without coordination?"
+      ],
+      "scoring_rubric": {
+        "9-10": "Excellent brand cohesion: strong brand cohesion, unified aesthetics, recognizable visual identity, consistent design language — all screens visually unified.",
+        "7-8": "Strong branding with minor inconsistencies — one screen or section breaks the visual language, e.g. a promotional banner uses different font style.",
+        "5-6": "Moderate visual identity inconsistencies — different button treatments, inconsistent header styles, or photography mixed with flat illustration.",
+        "3-4": "Weak cohesion affecting perception — screens look inconsistent, brand colours inconsistently applied, fragmented branding.",
+        "0-2": "Severely fragmented or inconsistent branding — screens look like different products, no visual thread connecting them."
+      },
+      "common_violations": [
+        "Promotional landing page using a completely different colour palette from the product pages",
+        "Navigation header restyled on one specific flow (different background colour or height)",
+        "Stock photography used on some screens and branded illustrations on others with no visual transition",
+        "Brand primary colour replaced by a similar but off-brand blue on one section",
+        "One screen using a rounded card style while adjacent screens use sharp-cornered cards",
+        "Mismatched visual assets breaking identity cohesion"
+      ]
+    },
+    {
+      "id": 12,
+      "name": "Cognitive Accessibility & Information Density",
+      "weightage": 6,
+      "definition": "Evaluate whether information and visual presentation remain cognitively manageable and accessible — covering cognitive load, information density, content chunking, simplicity, mental processing burden, visual overload, and comprehension effort.",
+      "what_this_is_not": "Not about whether users can complete tasks without being overwhelmed (that is CX 'Cognitive Load and Decision Simplicity'). This is about whether the visual design implements cognitive accessibility techniques correctly.",
+      "standards": [
+        "WCAG 2.2 SC 1.4.10 — Reflow: single-column layout on mobile to reduce spatial complexity",
+        "WCAG 2.1 — Cognitive Accessibility Guidance: chunk information, use visual grouping, limit choice",
+        "Bajaj: reduce cognitive load — limit fields and choices shown at any stage",
+        "Bajaj: one action at a time — no page to have more than one Primary CTA",
+        "Bajaj: relatable structuring — familiar patterns that reduce mental effort",
+        "Miller's Law: 7±2 items in working memory — apply to visible options and fields"
+      ],
+      "screenshot_checks": [
+        "Is a single dominant task or decision point visible per screen — or are multiple tasks competing?",
+        "Are there more than 6 visible form fields simultaneously on a mobile screen?",
+        "Is detailed or secondary information hidden behind accordions, info icons, or 'Read more' — or all expanded at once?",
+        "Are key financial figures (rate, EMI, tenure) visually extracted and highlighted — not buried in dense paragraphs?",
+        "Does the screen feel visually overwhelming — too many options, sections, cards, or CTAs at equal weight?",
+        "Are icons used to reduce reading burden — or is everything expressed only in dense text blocks?"
+      ],
+      "scoring_rubric": {
+        "9-10": "Exceptionally clear and cognitively accessible presentation: digestible information structure, reduced cognitive strain, clear chunking, simple presentation patterns, balanced visual density.",
+        "7-8": "Strong cognitive accessibility with minor overload risks — one screen presents too many options simultaneously, or important detail not extracted from dense text.",
+        "5-6": "Moderate complexity affecting comprehension — multiple competing tasks on some screens, or 6+ form fields shown at once without grouping.",
+        "3-4": "High cognitive burden causing usability issues — overwhelming information density, excessive complexity, cluttered presentation, poor content prioritization.",
+        "0-2": "Severely overwhelming or cognitively inaccessible presentation — all content expanded simultaneously, key figures buried, no progressive disclosure, no visual breathing room."
+      },
+      "common_violations": [
+        "EMI calculator, product benefits, eligibility criteria, and a CTA all competing equally on one mobile screen",
+        "Interest rate buried inside a 4-line product description paragraph with no visual extraction",
+        "8+ form fields visible simultaneously on a single mobile screen with no section grouping",
+        "All accordions expanded by default, presenting a wall of text on the initial page load",
+        "Promotional banner, product CTA, and cross-sell CTA all at the same visual weight on one screen",
+        "Overwhelming visual density with no progressive disclosure or content chunking"
+      ]
+    }
+  ]
+}
