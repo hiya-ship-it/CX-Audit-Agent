@@ -13,6 +13,7 @@ dashboard/reports/
 *.xlsx
 *.docx
 *.txt
+!requirements.txt
 .env
 __pycache__/
 ~$*
