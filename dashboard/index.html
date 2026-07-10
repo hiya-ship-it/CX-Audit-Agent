@@ -132,7 +132,7 @@
 <section class="controls-section">
         <div class="search-wrap">
           <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="search-input" placeholder="Search personas…" class="search-input" />
+          <input type="text" id="search-input" placeholder="Search by business…" class="search-input" />
           <button class="search-clear" id="search-clear" title="Clear">×</button>
         </div>
         <div class="sort-wrap">
@@ -143,10 +143,6 @@
             <button class="sort-pill" data-sort="score-desc">Score ↓</button>
             <button class="sort-pill" data-sort="name">Name</button>
           </div>
-        </div>
-        <div class="filter-wrap">
-          <button class="filter-pill filter-pill--active" data-filter="all">All</button>
-          <button class="filter-pill" data-filter="failed"><span class="dot dot--red"></span>Tech Failed</button>
         </div>
         <div class="product-filter-wrap" id="product-filter-wrap" style="display:none">
           <span class="sort-label">Product</span>
@@ -176,10 +172,6 @@
     <section id="page-new-audit" class="page">
       <div class="page-header">
         <h2 class="page-title">Run CX Audit</h2>
-        <div class="audit-type-switch">
-          <button type="button" class="btn btn--primary btn--sm" id="audit-subtab-web">Web Audit</button>
-          <button type="button" class="btn btn--ghost btn--sm" id="audit-subtab-app">App Audit</button>
-        </div>
         <p class="page-desc">Configure your audit parameters, choose personas, and launch — the AI agent will navigate the site as each user persona.</p>
       </div>
 
@@ -390,174 +382,6 @@
               <button class="btn btn--ghost btn--sm" id="cancel-run-btn">Cancel</button>
             </div>
             <pre class="running-log" id="running-log">Waiting for audit engine...</pre>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ══ PAGE: APP AUDIT ══════════════════════════════════════════════════════ -->
-    <section id="page-app-audit" class="page">
-      <div class="page-header">
-        <h2 class="page-title">Mobile App Audit</h2>
-        <div class="audit-type-switch">
-          <button type="button" class="btn btn--ghost btn--sm" onclick="showPage('new-audit')">Web Audit</button>
-          <button type="button" class="btn btn--primary btn--sm">App Audit</button>
-        </div>
-        <p class="page-desc">Audit your Android app using Appium automation. Requires Appium server and an emulator or connected device.</p>
-      </div>
-
-      <!-- Setup requirements -->
-      <div class="app-setup-card">
-        <h3 class="setup-title">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          Setup Requirements
-        </h3>
-        <div class="setup-steps">
-          <div class="setup-step">
-            <span class="setup-num">1</span>
-            <div>
-              <strong>Install Appium</strong>
-              <code class="setup-code">npm install -g appium && appium driver install uiautomator2</code>
-            </div>
-          </div>
-          <div class="setup-step">
-            <span class="setup-num">2</span>
-            <div>
-              <strong>Start Appium Server</strong>
-              <code class="setup-code">appium</code>
-            </div>
-          </div>
-          <div class="setup-step">
-            <span class="setup-num">3</span>
-            <div>
-              <strong>Start Android Emulator or connect a device</strong>
-              <code class="setup-code">emulator -avd Pixel_6_API_34</code>
-            </div>
-          </div>
-          <div class="setup-step">
-            <span class="setup-num">4</span>
-            <div>
-              <strong>Create / edit</strong> <code class="setup-code-inline">config/app_config.yaml</code>
-              <span> with your app package details</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="audit-form-wrap">
-        <form id="app-audit-form" class="audit-form">
-
-          <div class="form-section">
-            <h3 class="form-section-title">App Details</h3>
-            <div class="form-row form-row--2">
-              <div class="form-group">
-                <label class="form-label" for="af-business">Business / App Name</label>
-                <input type="text" id="af-business" name="business_name" class="form-input"
-                  placeholder="e.g. Bajaj Finserv App" />
-              </div>
-              <div class="form-group">
-                <label class="form-label" for="af-package">App Package <span class="form-required">*</span></label>
-                <input type="text" id="af-package" name="app_package" class="form-input" required
-                  placeholder="com.bajajfinserv.app" />
-              </div>
-            </div>
-            <div class="form-row form-row--2">
-              <div class="form-group">
-                <label class="form-label" for="af-activity">App Activity</label>
-                <input type="text" id="af-activity" name="app_activity" class="form-input"
-                  placeholder=".MainActivity (optional)" />
-              </div>
-              <div class="form-group">
-                <label class="form-label" for="af-device">Device / Emulator Name</label>
-                <input type="text" id="af-device" name="device_name" class="form-input"
-                  value="emulator-5554" />
-              </div>
-            </div>
-          </div>
-
-          <div class="form-section">
-            <h3 class="form-section-title">Audit Mode</h3>
-            <div class="auth-mode-cards">
-              <label class="auth-card auth-card--active" id="app-auth-card-out">
-                <input type="radio" name="auth_mode" value="logged_out" checked hidden />
-                <div class="auth-card-icon">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/></svg>
-                </div>
-                <div>
-                  <div class="auth-card-title">Anonymous</div>
-                  <div class="auth-card-desc">Fresh install, not logged in</div>
-                </div>
-              </label>
-              <label class="auth-card" id="app-auth-card-in">
-                <input type="radio" name="auth_mode" value="logged_in" hidden />
-                <div class="auth-card-icon">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-                </div>
-                <div>
-                  <div class="auth-card-title">Logged In</div>
-                  <div class="auth-card-desc">Use one mobile number if login appears</div>
-                </div>
-              </label>
-            </div>
-            <div id="app-login-fields" class="login-fields" style="display:none">
-              <div class="form-row form-row--2">
-                <div class="form-group">
-                  <label class="form-label" for="af-mobile">Mobile Number <span class="form-required">*</span></label>
-                  <input type="text" id="af-mobile" name="login_username" class="form-input"
-                    placeholder="9876543210" autocomplete="off" inputmode="numeric" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="form-section">
-            <h3 class="form-section-title">Persona File</h3>
-            <div class="form-row form-row--2">
-            <div class="form-group">
-              <label class="form-label">Choose Persona File</label>
-              <select id="af-personas-select" name="personas_path" class="form-input form-select">
-                <option value="">Loading…</option>
-              </select>
-            </div>
-              <div class="form-group">
-                <label class="form-label">Upload Persona File (.md)</label>
-                <div class="file-upload-wrap" id="app-file-upload-wrap">
-                  <input type="file" id="af-personas-file" name="personas_file" accept=".md" class="file-upload-input" />
-                  <div class="file-upload-label" id="app-file-upload-label">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
-                    <span>Drop file or click to browse</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div id="app-persona-picker" class="persona-picker" style="display:none">
-              <div class="persona-picker-head">
-                <label class="form-check">
-                  <input type="checkbox" id="app-persona-select-all" checked />
-                  <span class="form-check-label">Run all personas in this file</span>
-                </label>
-                <span class="persona-picker-count" id="app-persona-picker-count">0 selected</span>
-              </div>
-              <div class="persona-option-list" id="app-persona-option-list"></div>
-            </div>
-          </div>
-
-          <div class="form-actions">
-            <button type="submit" class="btn btn--primary btn--lg" id="submit-app-audit-btn">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-              Launch App Audit
-            </button>
-          </div>
-        </form>
-
-        <div id="app-audit-running-panel" class="running-panel" style="display:none">
-          <div class="running-icon"><div class="spinner-ring"></div></div>
-          <div class="running-body">
-            <h3 class="running-title">App Audit in Progress…</h3>
-            <p class="running-desc" id="app-running-desc">Agent is exploring the app</p>
-            <div class="running-actions">
-              <button class="btn btn--ghost btn--sm" id="cancel-app-run-btn">Cancel</button>
-            </div>
           </div>
         </div>
       </div>

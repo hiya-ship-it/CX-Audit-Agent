@@ -135,13 +135,43 @@ function parseMasterReport(md) {
   if (!md) return null;
   const meta = {};
 
-  // Metadata is written as a 2-column table: | **Target** | value |
-  const tM = md.match(/\|\s*\*\*Target\*\*\s*\|\s*([^|\n]+)\s*\|/);
-  const dM = md.match(/\|\s*\*\*Date\*\*\s*\|\s*([^|\n]+)\s*\|/);
-  const mM = md.match(/\|\s*\*\*Model\*\*\s*\|\s*([^|\n]+)\s*\|/);
-  if (tM) meta.target = tM[1].trim();
-  if (dM) meta.date   = dM[1].trim();
-  if (mM) meta.model  = mM[1].trim();
+  // Metadata table. Current reports use a HORIZONTAL table (header row +
+  // value row):
+  //   | **Target** | **Date** | **Model** | **Run** |
+  //   |---|---|---|---|
+  //   | https://…  | 2026-… UTC | gpt-4.1 | 203e808f |
+  // Older reports used a VERTICAL 2-column table: | **Target** | value |.
+  // The old regex grabbed the *next header cell* on a horizontal table
+  // (Target→**Date**, Date→**Model**, …), which is what surfaced the literal
+  // "**Date** • **Model** • **Run**" in the header. Parse by column instead.
+  const mdLines   = md.split('\n');
+  const headerRow = mdLines.findIndex(l => /\|\s*\*\*Target\*\*\s*\|/.test(l));
+  if (headerRow !== -1) {
+    const headerCells = mdLines[headerRow]
+      .split('|').map(c => c.replace(/\*\*/g, '').trim().toLowerCase()).filter(Boolean);
+    const isHorizontal = headerCells.includes('date') || headerCells.includes('model');
+    if (isHorizontal) {
+      // First non-separator row after the header carries the values.
+      for (let i = headerRow + 1; i < mdLines.length; i++) {
+        if (!mdLines[i].trim().startsWith('|')) break;
+        const cells = mdLines[i].split('|').map(c => c.trim()).filter(Boolean);
+        if (!cells.length || cells.every(c => /^-+$/.test(c))) continue;   // skip separator
+        const col = {};
+        headerCells.forEach((h, idx) => { if (cells[idx] != null) col[h] = cells[idx]; });
+        if (col['target']) meta.target = col['target'];
+        if (col['date'])   meta.date   = col['date'];
+        if (col['model'])  meta.model  = col['model'];
+        break;
+      }
+    } else {
+      const tM = md.match(/\|\s*\*\*Target\*\*\s*\|\s*([^|\n]+?)\s*\|/);
+      const dM = md.match(/\|\s*\*\*Date\*\*\s*\|\s*([^|\n]+?)\s*\|/);
+      const mM = md.match(/\|\s*\*\*Model\*\*\s*\|\s*([^|\n]+?)\s*\|/);
+      if (tM) meta.target = tM[1].trim();
+      if (dM) meta.date   = dM[1].trim();
+      if (mM) meta.model  = mM[1].trim();
+    }
+  }
 
   // Scorecard table has variable columns; parse by header names, not position.
   // The actual report header is: | Persona | Outcome | Steps | CX | Design | Content |
@@ -346,15 +376,13 @@ function showPage(pageId) {
   qsa('.nav-tab').forEach(t => t.classList.remove('nav-tab--active'));
 
   const page = qs(`#page-${pageId}`);
-  const tabPage = pageId === 'app-audit' ? 'new-audit' : pageId;
-  const tab  = qs(`.nav-tab[data-page="${tabPage}"]`);
+  const tab  = qs(`.nav-tab[data-page="${pageId}"]`);
   if (page) page.classList.add('page--active');
   if (tab)  tab.classList.add('nav-tab--active');
 
   STATE.activePage = pageId;
 
   if (pageId === 'new-audit') loadPersonaFiles('#f-personas-select').then(() => parsePersonaSource('web'));
-  if (pageId === 'app-audit') loadPersonaFiles('#af-personas-select').then(() => parsePersonaSource('app'));
   if (pageId === 'issues')    loadIssues();
 }
 
@@ -364,8 +392,6 @@ function bindNavEvents() {
   });
 
   qs('#new-audit-btn').addEventListener('click', () => showPage('new-audit'));
-  qs('#audit-subtab-web')?.addEventListener('click', () => showPage('new-audit'));
-  qs('#audit-subtab-app')?.addEventListener('click', () => showPage('app-audit'));
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -488,7 +514,6 @@ async function init() {
   bindDashboardEvents();
   bindModalEvents();
   bindAuditFormEvents();
-  bindAppAuditFormEvents();
   bindIssuesEvents();
   hideLoading();
 
@@ -563,7 +588,8 @@ function applyFilterSort() {
   let ps = [...STATE.allPersonas];
   if (STATE.searchQuery) {
     const q = STATE.searchQuery.toLowerCase();
-    ps = ps.filter(p => p.name.toLowerCase().includes(q) || p.intent.toLowerCase().includes(q));
+    // Search by business (product line), not persona name.
+    ps = ps.filter(p => (p.personaData?.product || '').toLowerCase().includes(q));
   }
   if (STATE.activeFilter === 'failed')  ps = ps.filter(p => isTechnicalFailure(p));
   if (STATE.activeProducts.size > 0) {
@@ -2504,12 +2530,10 @@ async function pollRunStatus(runId) {
       updateRunBadge();
     }
 
-    // Show dashboard after short delay — hide whichever running panel is visible
+    // Show dashboard after short delay — hide the running panel
     setTimeout(() => {
       qs('#audit-running-panel').style.display     = 'none';
       qs('#audit-form').style.display              = 'block';
-      qs('#app-audit-running-panel').style.display = 'none';
-      qs('#app-audit-form').style.display          = 'block';
       showPage('dashboard');
     }, 1500);
   }
@@ -2608,94 +2632,6 @@ async function deletePersonaRun(slug, auditType, runId = '') {
     showToast('Persona run deleted', 'success');
   } else {
     showToast('Could not delete persona run', 'error');
-  }
-}
-
-/* ══════════════════════════════════════════════════════════════════════════════
-   APP AUDIT FORM
-   ══════════════════════════════════════════════════════════════════════════════ */
-
-function bindAppAuditFormEvents() {
-  qsa('input[name="auth_mode"]', qs('#app-audit-form')).forEach(radio => {
-    radio.addEventListener('change', () => {
-      const loggedIn = radio.value === 'logged_in' && radio.checked;
-      qs('#app-auth-card-out').classList.toggle('auth-card--active', !loggedIn);
-      qs('#app-auth-card-in').classList.toggle('auth-card--active',   loggedIn);
-      qs('#app-login-fields').style.display = loggedIn ? 'block' : 'none';
-    });
-  });
-
-  const appFile = qs('#af-personas-file');
-  if (appFile) appFile.addEventListener('change', e => {
-    const file = e.target.files?.[0];
-    qs('#app-file-upload-label').querySelector('span').textContent =
-      file ? file.name : 'Drop file or click to browse';
-    if (file) qs('#af-personas-select').selectedIndex = -1;
-    parsePersonaSource('app');
-  });
-  qs('#af-personas-select').addEventListener('change', () => parsePersonaSource('app'));
-
-  qs('#app-audit-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    await submitAppAudit();
-  });
-
-  qs('#cancel-app-run-btn').addEventListener('click', async () => {
-    if (!STATE.appRunId || !API_MODE) return;
-    await fetch(`${CFG.api}/runs/${STATE.appRunId}/cancel`, { method: 'POST' });
-    qs('#app-audit-running-panel').style.display = 'none';
-    qs('#app-audit-form').style.display = 'block';
-    STATE.appRunId = null;
-    showToast('App audit cancelled', 'info');
-  });
-}
-
-async function submitAppAudit() {
-  if (!API_MODE) {
-    showToast('Start the Flask server (python server.py) to launch audits.', 'error');
-    return;
-  }
-
-  const form = qs('#app-audit-form');
-  const body = Object.fromEntries(new FormData(form).entries());
-  if (body.auth_mode === 'logged_in' && !String(body.login_username || '').trim()) {
-    showToast('Enter a mobile number for logged-in app audits.', 'error');
-    return;
-  }
-  body.personas_path = STATE.appPersonaPath || qs('#af-personas-select').value;
-  const selected = getSelectedPersonas('app');
-  if (qs('#app-persona-picker')?.style.display !== 'none' && !selected.length) {
-    showToast('Select at least one persona to run.', 'error');
-    return;
-  }
-  if (selected.length) body.selected_personas = selected;
-
-  qs('#submit-app-audit-btn').disabled = true;
-  qs('#submit-app-audit-btn').textContent = 'Launching…';
-
-  try {
-    const res  = await fetch(`${CFG.api}/audit/app/start`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to start app audit');
-
-    STATE.appRunId    = data.run_id;
-    STATE.activeRunId = data.run_id;   // reuse web polling logic
-    form.style.display = 'none';
-    qs('#app-audit-running-panel').style.display = 'flex';
-    qs('#app-running-desc').textContent = `Agent is exploring the app on your device…`;
-    showToast('App audit started! Results will load automatically when done.', 'success');
-
-    // Poll for completion — same logic as web audit
-    startPolling(data.run_id);
-  } catch (err) {
-    showToast(`Error: ${err.message}`, 'error');
-  } finally {
-    qs('#submit-app-audit-btn').disabled = false;
-    qs('#submit-app-audit-btn').innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> Launch App Audit`;
   }
 }
 
