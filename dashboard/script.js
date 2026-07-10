@@ -195,9 +195,16 @@ function _normCxDims(arr) {
   return (arr || []).map(d => ({ ...d, name: d.name || d.dimension_name || '' }));
 }
 
+// Backend emits severities from the enum ["critical","major","minor"]
+// (evaluation/cx_evaluator.py), but the dashboard buckets friction by
+// high/medium/low. Map here — the single choke point — so the tile summary,
+// overview "Critical Issues", and friction list all agree, and already-saved
+// journey_log.json files render without re-running the audit.
+const _SEVERITY_MAP = { critical: 'high', major: 'medium', minor: 'low' };
+
 function _normCxFriction(arr) {
   return (arr || []).map(f => ({
-    severity:    f.severity    || 'minor',
+    severity:    _SEVERITY_MAP[f.severity] || f.severity || 'low',
     location:    f.location    || f.dimension      || '',
     description: f.description || '',
     impact:      f.impact      || f.recommendation || '',
@@ -1345,39 +1352,45 @@ function renderFriction(p) {
   }
 
   // ── Friction section — grouped by severity ──
-  if (sorted.length) {
-    html += `<div class="fad-section-title fad-section-title--friction" style="margin-top:${delights.length ? 24 : 0}px">⚠ Friction Points</div>`;
+  // Build the friction cards first, then only emit the section header when at
+  // least one card actually rendered. Guarding on `sorted.length` alone would
+  // print a bare "⚠ Friction Points" heading with nothing under it whenever a
+  // severity value falls outside the known groups (see severity-map above).
+  const SEVERITY_GROUPS = [
+    { key: 'high',   label: '🔴 Critical', cls: 'high'   },
+    { key: 'medium', label: '🟡 Medium',   cls: 'medium' },
+    { key: 'low',    label: '⚠ Low',       cls: 'low'    },
+  ];
 
-    const SEVERITY_GROUPS = [
-      { key: 'high',   label: '🔴 Critical', cls: 'high'   },
-      { key: 'medium', label: '🟡 Medium',   cls: 'medium' },
-      { key: 'low',    label: '⚠ Low',       cls: 'low'    },
-    ];
-
-    for (const grp of SEVERITY_GROUPS) {
-      const items = sorted.filter(fp => fp.severity === grp.key);
-      if (!items.length) continue;
-      html += `<div class="fad-severity-group">
-        <div class="fad-severity-header fad-severity-header--${grp.cls}">
-          <span class="fad-severity-label">${grp.label}</span>
-          <span class="fad-severity-count">${items.length} issue${items.length > 1 ? 's' : ''}</span>
-        </div>`;
-      html += items.map(fp => `
-        <div class="fad-card fad-card--${fp.severity}">
-          <div class="fad-left-bar"></div>
-          <div class="fad-body">
-            <div class="fad-header">
-              ${fp.location ? `<span class="fad-loc">${esc(fp.location)}</span>` : ''}
-            </div>
-            <p class="fad-text">${esc(fp.description || '')}</p>
-            ${fp.impact ? `<p class="fad-impact">Impact: ${esc(fp.impact)}</p>` : ''}
+  let frictionHtml = '';
+  for (const grp of SEVERITY_GROUPS) {
+    const items = sorted.filter(fp => fp.severity === grp.key);
+    if (!items.length) continue;
+    frictionHtml += `<div class="fad-severity-group">
+      <div class="fad-severity-header fad-severity-header--${grp.cls}">
+        <span class="fad-severity-label">${grp.label}</span>
+        <span class="fad-severity-count">${items.length} issue${items.length > 1 ? 's' : ''}</span>
+      </div>`;
+    frictionHtml += items.map(fp => `
+      <div class="fad-card fad-card--${fp.severity}">
+        <div class="fad-left-bar"></div>
+        <div class="fad-body">
+          <div class="fad-header">
+            ${fp.location ? `<span class="fad-loc">${esc(fp.location)}</span>` : ''}
           </div>
-        </div>`).join('');
-      html += `</div>`;
-    }
+          <p class="fad-text">${esc(fp.description || '')}</p>
+          ${fp.impact ? `<p class="fad-impact">Impact: ${esc(fp.impact)}</p>` : ''}
+        </div>
+      </div>`).join('');
+    frictionHtml += `</div>`;
   }
 
-  if (!sorted.length && !delights.length) {
+  if (frictionHtml) {
+    html += `<div class="fad-section-title fad-section-title--friction" style="margin-top:${delights.length ? 24 : 0}px">⚠ Friction Points</div>`;
+    html += frictionHtml;
+  }
+
+  if (!html) {
     html = '<p class="muted">No friction or delight moments recorded.</p>';
   }
 
