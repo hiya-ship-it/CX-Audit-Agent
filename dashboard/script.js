@@ -790,6 +790,12 @@ function personaRunKey(p) {
   return p.runId ? `${p.runId}__${slug}__${p.isMobile ? 'app' : 'web'}` : `${slug}__${p.isMobile ? 'app' : 'web'}`;
 }
 
+// Short labels for the card dimension bars. Defaults to the dimension's first
+// word; override here where the first word alone is ambiguous.
+const CARD_DIM_LABELS = {
+  'Financial Clarity and Disclosure': 'Financial Clarity',
+};
+
 function buildCardHTML(p) {
   const scoreClass = p.overallScore >= 7 ? 'high' : p.overallScore >= 4 ? 'mid' : 'low';
   const outcomeState = journeyOutcome(p);
@@ -799,7 +805,7 @@ function buildCardHTML(p) {
 
   const dims = p.dimensions.slice(0, 5).map(d => `
     <div class="card-dim">
-      <span class="card-dim-name">${d.name?.split(' ')[0] || '—'}</span>
+      <span class="card-dim-name">${CARD_DIM_LABELS[d.name] || d.name?.split(' ')[0] || '—'}</span>
       <div class="card-dim-bar">
         <div class="card-dim-fill" style="width:${(d.score/10)*100}%;background:${scoreGradient(d.score)}"></div>
       </div>
