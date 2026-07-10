@@ -1205,7 +1205,8 @@ function renderJourney(p) {
   const dropOff     = buildDropOffInfo(p);
   qs('#journey-meta').innerHTML = `
     <span class="jm-pill">${p.stepCount} steps</span>
-    <span class="jm-pill">${p.visitedUrls.length} pages</span>`;
+    <span class="jm-pill">${p.visitedUrls.length} pages</span>
+    <button type="button" class="jm-toggle" id="journey-expand-toggle" data-state="closed" onclick="toggleAllSteps()">Expand all</button>`;
 
   const EMOTION_EMOJI = {
     confident:'😊', curious:'🤔', confused:'😕', frustrated:'😤',
@@ -1216,84 +1217,53 @@ function renderJourney(p) {
   };
   const COGNITIVE_COLOR = { low:'#22c55e', medium:'#f59e0b', high:'#ef4444' };
 
-  qs('#journey-timeline').innerHTML = p.steps.map(s => {
+  qs('#journey-timeline').innerHTML = p.steps.map((s, i) => {
     const status   = s.success ? 'success' : 'fail';
     const emotion  = (s.emotion || '').toLowerCase();
     const emojiStr = EMOTION_EMOJI[emotion] ? `${EMOTION_EMOJI[emotion]} ${s.emotion}` : (s.emotion || '');
     const cogLevel = (s.cognitive_load || '').toLowerCase().match(/\b(low|medium|high)\b/)?.[1] || '';
     const cogColor = COGNITIVE_COLOR[cogLevel] || '#94a3b8';
+    const stepId   = `jstep-${i}`;
     const ss = s.screenshotRel
       ? `<button class="step-ss-btn" onclick="openLightbox('${esc(s.screenshotRel)}','Step ${s.step_number+1}')">📸</button>`
       : '';
 
-    // Build enriched blocks
-    let enriched = '';
+    // Everything past the header + the single "why" lead lives in a collapsed
+    // detail drawer, so the timeline stays scannable by default. Nothing is
+    // dropped — the full prose (visible content, mindset, trust, questions,
+    // CX note …) is one click away. The action/emotion/cognitive-load chips in
+    // the header carry the at-a-glance signal.
+    const detail = [];
+    const add = (label, text, cls) => { if (text) detail.push(
+      `<div class="step-field step-field--${cls}"><span class="sf-label">${label}</span><p class="sf-text">${esc(text)}</p></div>`); };
+    add("What's on Screen",             s.visible_content,      'visible');
+    add('Attention Focus',              s.attention_focus,      'attention');
+    add('Cognitive Load',               s.cognitive_load,       'cognitive');
+    add('State of Mind',                s.state_of_mind,        'mind');
+    add('Trust Signals',                s.trust_signals,        'trust');
+    add("What's Guiding Next Decision", s.guiding_factors,      'guiding');
+    add('Unanswered Questions',         s.unanswered_questions, 'questions');
+    add('CX Insight',                   s.cx_note,              'cx');
 
-    if (s.visible_content) enriched += `
-      <div class="step-field step-field--visible">
-        <span class="sf-label">What's on Screen</span>
-        <p class="sf-text">${esc(s.visible_content)}</p>
-      </div>`;
-
-    if (s.attention_focus) enriched += `
-      <div class="step-field step-field--attention">
-        <span class="sf-label">Attention Focus</span>
-        <p class="sf-text">${esc(s.attention_focus)}</p>
-      </div>`;
-
-    if (s.cognitive_load) enriched += `
-      <div class="step-field step-field--cognitive">
-        <span class="sf-label">Cognitive Load</span>
-        ${cogLevel ? `<span class="cog-badge" style="background:${cogColor}">${cogLevel.toUpperCase()}</span>` : ''}
-        <p class="sf-text">${esc(s.cognitive_load)}</p>
-      </div>`;
-
-    if (s.state_of_mind) enriched += `
-      <div class="step-field step-field--mind">
-        <span class="sf-label">State of Mind</span>
-        <p class="sf-text">${esc(s.state_of_mind)}</p>
-      </div>`;
-
-    if (s.trust_signals) enriched += `
-      <div class="step-field step-field--trust">
-        <span class="sf-label">Trust Signals</span>
-        <p class="sf-text">${esc(s.trust_signals)}</p>
-      </div>`;
-
-    if (s.guiding_factors) enriched += `
-      <div class="step-field step-field--guiding">
-        <span class="sf-label">What's Guiding Next Decision</span>
-        <p class="sf-text">${esc(s.guiding_factors)}</p>
-      </div>`;
-
-    if (s.unanswered_questions) enriched += `
-      <div class="step-field step-field--questions">
-        <span class="sf-label">Unanswered Questions</span>
-        <p class="sf-text">${esc(s.unanswered_questions)}</p>
-      </div>`;
-
-    if (s.cx_note) enriched += `
-      <div class="step-field step-field--cx">
-        <span class="sf-label">CX Insight</span>
-        <p class="sf-text">${esc(s.cx_note)}</p>
-      </div>`;
-
-    // Login wall block
-    let loginWallBlock = '';
     if (s.login_wall_decision) {
       const lwDecision = s.login_wall_decision;
       const lwColor = lwDecision === 'entered_mobile' ? '#6366f1' : lwDecision === 'dismissed' ? '#f59e0b' : '#94a3b8';
       const lwLabel = { entered_mobile: 'Entered Dummy Mobile', dismissed: 'Dismissed Popup', ignored: 'Ignored' }[lwDecision] || lwDecision;
-      loginWallBlock = `
+      detail.push(`
         <div class="step-field step-field--loginwall">
           <span class="sf-label">Login Wall Decision</span>
           <span class="lw-badge" style="background:${lwColor}">${esc(lwLabel)}</span>
           ${s.login_wall_reasoning ? `<p class="sf-text">${esc(s.login_wall_reasoning)}</p>` : ''}
-        </div>`;
+        </div>`);
     }
 
+    const detailHtml = detail.join('');
+    const hasDetail  = detailHtml.length > 0;
+    const cogChip    = cogLevel
+      ? `<span class="cog-badge tl-cog" style="background:${cogColor}" title="Cognitive load">${cogLevel.toUpperCase()}</span>` : '';
+
     return `
-      <div class="timeline-item timeline-item--${status}">
+      <div class="timeline-item timeline-item--${status}" id="${stepId}">
         <div class="tl-dot tl-dot--${status}"></div>
         <div class="tl-content">
           <div class="tl-header">
@@ -1301,17 +1271,41 @@ function renderJourney(p) {
             <span class="tl-action tl-action--${s.action}">${s.action?.toUpperCase() || '?'}</span>
             ${s.target ? `<span class="tl-target">${esc(s.target)}</span>` : ''}
             ${emojiStr ? `<span class="tl-emotion">${esc(emojiStr)}</span>` : ''}
+            ${cogChip}
             ${s.duration_ms ? `<span class="tl-duration">${s.duration_ms}ms</span>` : ''}
             ${ss}
           </div>
-          ${s.reasoning ? `<div class="step-field"><span class="sf-label">Reasoning</span><p class="sf-text">${esc(s.reasoning)}</p></div>` : ''}
-          ${enriched}
-          ${loginWallBlock}
+          ${s.reasoning ? `<p class="tl-lead${hasDetail ? ' tl-lead--clamp' : ''}">${esc(s.reasoning)}</p>` : ''}
+          ${hasDetail ? `<button type="button" class="tl-detail-toggle" onclick="toggleStepDetail('${stepId}')"><span class="tdt-label">Details</span><span class="tl-chev">▾</span></button>` : ''}
+          ${hasDetail ? `<div class="tl-detail" id="${stepId}-detail" hidden>${detailHtml}</div>` : ''}
           ${s.error ? `<p class="tl-error">⚠ ${esc(s.error)}</p>` : ''}
         </div>
       </div>`;
   }).join('') || '<p class="muted">No steps recorded.</p>';
 }
+
+// Expand/collapse a single journey step's detail drawer (also un-clamps its
+// "why" lead so nothing stays hidden once opened).
+window.toggleStepDetail = function(id) {
+  const item = document.getElementById(id);
+  if (!item) return;
+  const open   = item.classList.toggle('tl-item--open');
+  const detail = document.getElementById(`${id}-detail`);
+  if (detail) detail.hidden = !open;
+  const chev = item.querySelector('.tl-chev');   if (chev) chev.textContent = open ? '▴' : '▾';
+  const lbl  = item.querySelector('.tdt-label'); if (lbl)  lbl.textContent  = open ? 'Hide details' : 'Details';
+};
+
+// Expand/collapse every step at once (button in the journey meta bar).
+window.toggleAllSteps = function() {
+  const btn    = document.getElementById('journey-expand-toggle');
+  const expand = !btn || btn.dataset.state !== 'open';
+  qsa('#journey-timeline .timeline-item').forEach(item => {
+    if (!document.getElementById(`${item.id}-detail`)) return;         // no drawer → skip
+    if (item.classList.contains('tl-item--open') !== expand) toggleStepDetail(item.id);
+  });
+  if (btn) { btn.dataset.state = expand ? 'open' : 'closed'; btn.textContent = expand ? 'Collapse all' : 'Expand all'; }
+};
 
 /* ── Friction & Delight panel ────────────────────────────────────────────── */
 
