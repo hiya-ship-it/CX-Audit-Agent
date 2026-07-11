@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import io
+import logging
 import random
 import re
 import time
@@ -38,6 +39,8 @@ except ImportError:
 
 import config
 from browser.state_extractor import extract_state, PageState
+
+log = logging.getLogger(__name__)
 
 
 # ── Action result ─────────────────────────────────────────────────────────────
@@ -173,6 +176,9 @@ class BrowserController:
         self._context: Optional[BrowserContext] = None
         self._page:    Optional[Page]           = None
         self._step_counter: int                 = 0
+        # Path to the finalised journey recording, set in __aexit__ after the
+        # context closes (Playwright only finalises the video on close).
+        self.video_path:    str                 = ""
 
     async def __aenter__(self) -> "BrowserController":
         self._pw = await async_playwright().start()
@@ -216,23 +222,22 @@ class BrowserController:
 
     async def __aexit__(self, *_) -> None:
         if self._context:
-            try:
-                if config.RECORD_VIDEO:
-                    video = self._page.video if self._page else None
-                    if video:
-                        vid_path = await video.path()
-                        if vid_path:
-                            dest = config.VIDEOS_DIR / f"{self._slug}.webm"
-                            try:
-                                Path(vid_path).rename(dest)
-                            except Exception:
-                                pass
-            except Exception:
-                pass
+            # Capture the video handle BEFORE closing. Playwright finalises the
+            # recording only when the context closes, so we must close FIRST and
+            # then persist it. The previous order (rename before close) always
+            # hit an unfinalised/locked file and silently lost every video.
+            video = self._page.video if (config.RECORD_VIDEO and self._page) else None
             try:
                 await self._context.close()
-            except Exception:
-                pass
+            except Exception as exc:
+                log.warning("Browser context close failed: %s", exc)
+            if video:
+                try:
+                    dest = config.VIDEOS_DIR / f"{self._slug}.webm"
+                    await video.save_as(str(dest))   # waits until the video is fully written
+                    self.video_path = str(dest)
+                except Exception as exc:
+                    log.warning("Could not save journey video for %s: %s", self._slug, exc)
         if self._browser:
             try:
                 await self._browser.close()

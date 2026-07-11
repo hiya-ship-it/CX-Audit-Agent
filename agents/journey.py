@@ -982,10 +982,20 @@ class JourneyAgent:
             if final_ss:
                 memory.final_screenshot = final_ss
 
-            # Store video path
-            vid = config.VIDEOS_DIR / f"{persona.slug}.webm"
-            if vid.exists():
-                memory.video_path = str(vid)
+        # Store the journey video path AFTER the browser context has closed
+        # (i.e. OUTSIDE the `async with browser` block above), so Playwright has
+        # finalised the recording. BrowserController.__aexit__ writes the
+        # consolidated videos/<slug>.webm; fall back to the newest raw Playwright
+        # recording under videos/<slug>/ if the consolidated file isn't present.
+        _vid = config.VIDEOS_DIR / f"{persona.slug}.webm"
+        if _vid.exists():
+            memory.video_path = str(_vid)
+        else:
+            _vsub = config.VIDEOS_DIR / persona.slug
+            _webms = (sorted(_vsub.glob("*.webm"), key=lambda f: f.stat().st_mtime, reverse=True)
+                      if _vsub.is_dir() else [])
+            if _webms:
+                memory.video_path = str(_webms[0])
 
         # Update token usage + derived dashboard metadata
         memory.token_usage = self._llm.pop_usage()
