@@ -263,8 +263,13 @@ function _normDesignDims(arr) {
 }
 
 function _normDesignIssues(arr) {
+  // Backend emits critical/major/minor (evaluation/design_evaluator.py); the
+  // design-issue renderer buckets by high/medium/low. Map here — same fix as
+  // _normCxFriction — so "Critical Design Issues" isn't silently empty. Spread
+  // the raw issue first so dimension/recommendation/wcag_criterion survive.
   return (arr || []).map(i => ({
-    severity:    i.severity    || 'minor',
+    ...i,
+    severity:    _SEVERITY_MAP[i.severity] || i.severity || 'low',
     location:    i.location    || i.dimension      || '',
     description: i.description || '',
     impact:      i.impact      || i.recommendation || '',

@@ -27,24 +27,85 @@ from llm.openai_responses import OpenAIResponsesClient
 
 log = logging.getLogger(__name__)
 
-# ── 12 Design Dimensions with weights (BRD §3.1 Annexure) ────────────────────
-DESIGN_DIMENSIONS: list[tuple[str, float]] = [
-    ("Typography and Readability",             0.11),
-    ("Colour System and Visual Consistency",   0.11),
-    ("Layout and Spatial Design",              0.10),
-    ("Iconography and Visual Language",        0.11),
-    ("Component Design and UI Patterns",       0.10),
-    ("Navigation and Wayfinding Design",       0.08),
-    ("Image and Media Quality",                0.06),
-    ("Responsive and Adaptive Design",         0.08),
-    ("Micro-interactions and Animation",       0.08),
-    ("Brand Identity Expression",              0.05),
-    ("Visual Hierarchy and Emphasis",          0.06),
-    ("Accessibility in Visual Design",         0.06),
+# ── 12 Design Dimensions — single source of truth ────────────────────────────
+# The canonical framework is design_kb/design_evaluation_parameters.json (v3.0):
+# names, weightages, and the full per-dimension rubric all come from there. The
+# list below is only a fallback for a missing/corrupt file — kept in sync with
+# the KB, and a drift between the two is logged (see _load_design_framework).
+_KB_PARAMS_FILE = "design_evaluation_parameters.json"
+
+_FALLBACK_DIMENSIONS: list[tuple[str, float]] = [
+    ("Typography System Execution",                    0.11),
+    ("Color System Application & Contrast",            0.11),
+    ("Layout Grid & Spatial Rhythm",                   0.10),
+    ("Visual Hierarchy & Attention Guidance",          0.11),
+    ("Component Design Quality & System Consistency",  0.10),
+    ("Interactive States & Focus Design",              0.08),
+    ("Iconography & Visual Communication Quality",     0.06),
+    ("Touch Ergonomics & Spatial Accessibility",       0.08),
+    ("Form Design & Label Accessibility",              0.08),
+    ("System Feedback & Status Visibility",            0.06),
+    ("Brand Identity & Visual Consistency",            0.05),
+    ("Cognitive Accessibility & Information Density",  0.06),
 ]
 
-_DIM_NAMES  = [d[0] for d in DESIGN_DIMENSIONS]
-_DIM_WEIGHT = {d[0]: d[1] for d in DESIGN_DIMENSIONS}
+
+def _load_design_framework() -> dict:
+    """
+    Load the 12 design dimensions, weights, and full per-dimension rubric from
+    design_kb/design_evaluation_parameters.json — the single source of truth
+    for the whole design audit (prompt list, schema names, and aggregation all
+    read from what this returns). Falls back to _FALLBACK_DIMENSIONS (no rubric)
+    only if the file is missing/corrupt.
+
+    Returns {dimensions: [(name, weight)], rubric: {name: {...}}, meta: {...}}.
+    """
+    path = config.DESIGN_KB_DIR / _KB_PARAMS_FILE
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        dims: list[tuple[str, float]] = []
+        rubric: dict[str, dict] = {}
+        for d in data.get("dimensions", []):
+            name = (d.get("name") or "").strip()
+            if not name:
+                continue
+            dims.append((name, float(d.get("weightage", 0)) / 100.0))
+            rubric[name] = d
+        if not dims:
+            raise ValueError("no dimensions found in KB")
+
+        # ── Drift / sanity guards (item F) ──
+        total = sum(w for _, w in dims)
+        if abs(total - 1.0) > 0.02:
+            log.warning("Design KB weightages sum to %.3f (expected ~1.0)", total)
+        if [n for n, _ in dims] != [n for n, _ in _FALLBACK_DIMENSIONS]:
+            log.warning(
+                "Design KB dimensions differ from the in-code fallback — using the "
+                "KB (file is authoritative). Update _FALLBACK_DIMENSIONS to match."
+            )
+        log.info("Design framework loaded from KB: %d dimensions, weights sum %.2f", len(dims), total)
+        return {
+            "dimensions": dims,
+            "rubric":     rubric,
+            "meta": {
+                "description":       data.get("description", ""),
+                "audit_scope":       data.get("audit_scope", ""),
+                "framework_sources": data.get("framework_sources", []),
+                "scoring_scale":     data.get("scoring_scale", {}),
+                "issue_severity":    data.get("issue_severity", {}),
+            },
+        }
+    except Exception as exc:
+        log.error("Could not load design framework from %s (%s) — using built-in fallback.", path, exc)
+        return {"dimensions": list(_FALLBACK_DIMENSIONS), "rubric": {}, "meta": {}}
+
+
+_FRAMEWORK      = _load_design_framework()
+DESIGN_DIMENSIONS: list[tuple[str, float]] = _FRAMEWORK["dimensions"]
+_DIM_NAMES      = [d[0] for d in DESIGN_DIMENSIONS]
+_DIM_WEIGHT     = {d[0]: d[1] for d in DESIGN_DIMENSIONS}
+_DIM_RUBRIC     = _FRAMEWORK["rubric"]
+_FRAMEWORK_META = _FRAMEWORK["meta"]
 
 _MAX_SCREENSHOTS = 12
 _JPEG_QUALITY    = 72
@@ -199,30 +260,65 @@ _SCHEMA = _build_schema()
 # ── Knowledge base loader ─────────────────────────────────────────────────────
 
 def _load_knowledge_base() -> str:
-    kb_dir = config.DESIGN_KB_DIR
+    """
+    Build the design-audit knowledge base injected into the prompt from the
+    already-loaded framework (_FRAMEWORK). Unlike the old loader, this does NOT
+    truncate: it emits, per dimension, the definition + screenshot checks +
+    scoring anchors + common violations — i.e. the actual grading rubric the
+    model needs — plus the Bajaj brand principles in full.
+    """
     sections: list[str] = []
+    meta = _FRAMEWORK_META
 
-    params_path = kb_dir / "design_evaluation_parameters.json"
-    if params_path.exists():
-        try:
-            data = json.loads(params_path.read_text(encoding="utf-8"))
-            sections.append(
-                "=== DESIGN EVALUATION PARAMETERS ===\n"
-                + json.dumps(data, indent=2, ensure_ascii=False)[:3000]
-            )
-        except Exception as exc:
-            log.warning("Could not load design_evaluation_parameters.json: %s", exc)
+    # ── Framework header: scope, sources, scoring scale, severity ──
+    head: list[str] = []
+    if meta.get("audit_scope"):
+        head.append(f"AUDIT SCOPE: {meta['audit_scope']}")
+    if meta.get("framework_sources"):
+        head.append("FRAMEWORK SOURCES: " + "; ".join(meta["framework_sources"]))
+    if meta.get("scoring_scale"):
+        head.append("SCORING SCALE:\n" + "\n".join(f"  {k}: {v}" for k, v in meta["scoring_scale"].items()))
+    if meta.get("issue_severity"):
+        head.append("ISSUE SEVERITY:\n" + "\n".join(f"  {k}: {v}" for k, v in meta["issue_severity"].items()))
+    if head:
+        sections.append("=== DESIGN & ACCESSIBILITY FRAMEWORK (WCAG 2.2 + Bajaj) ===\n" + "\n".join(head))
 
-    principles_path = kb_dir / "bajaj_principles_summary.md"
+    # ── Per-dimension rubric — the real grading signal ──
+    if _DIM_RUBRIC:
+        blocks: list[str] = []
+        for i, (name, weight) in enumerate(DESIGN_DIMENSIONS, 1):
+            d = _DIM_RUBRIC.get(name, {})
+            parts = [f"{i:02d}. {name}  (weight {int(round(weight * 100))}%)"]
+            if d.get("definition"):
+                parts.append(f"   What it measures: {d['definition']}")
+            if d.get("what_this_is_not"):
+                parts.append(f"   Scope boundary: {d['what_this_is_not']}")
+            checks = d.get("screenshot_checks") or []
+            if checks:
+                parts.append("   Screenshot checks:")
+                parts.extend(f"     - {c}" for c in checks)
+            rub = d.get("scoring_rubric") or {}
+            anchors = [(k, rub[k]) for k in ("9-10", "5-6", "0-2") if k in rub]
+            if anchors:
+                parts.append("   Score anchors:")
+                parts.extend(f"     {k}: {v}" for k, v in anchors)
+            viol = (d.get("common_violations") or [])[:3]
+            if viol:
+                parts.append("   Common violations:")
+                parts.extend(f"     - {v}" for v in viol)
+            blocks.append("\n".join(parts))
+        sections.append("=== 12 DESIGN DIMENSIONS — FULL RUBRIC ===\n" + "\n\n".join(blocks))
+
+    # ── Bajaj brand principles (full — small file, no truncation) ──
+    principles_path = config.DESIGN_KB_DIR / "bajaj_principles_summary.md"
     if principles_path.exists():
         try:
-            text = principles_path.read_text(encoding="utf-8")
-            sections.append("=== BAJAJ BRAND PRINCIPLES ===\n" + text[:2000])
+            sections.append("=== BAJAJ BRAND PRINCIPLES ===\n" + principles_path.read_text(encoding="utf-8"))
         except Exception as exc:
             log.warning("Could not load bajaj_principles_summary.md: %s", exc)
 
     if not sections:
-        return "(No design knowledge base files found — evaluate based on general design principles.)"
+        return "(No design knowledge base available — evaluate on general visual-design and WCAG 2.2 A/AA principles.)"
     return "\n\n".join(sections)
 
 
@@ -398,11 +494,26 @@ Also provide:
     # ── Parse + aggregate ─────────────────────────────────────────────────────
 
     def _parse(self, raw: dict, persona: Persona) -> DesignAuditResult:
-        raw_dims = {d.get("dimension_name", ""): d for d in raw.get("dimension_scores", [])}
+        # Match returned dimensions to canonical KB names case/space-insensitively
+        # so a minor formatting difference doesn't silently drop a real score.
+        def _norm(s: str) -> str:
+            return "".join((s or "").lower().split())
+
+        raw_by_norm = {_norm(d.get("dimension_name", "")): d for d in raw.get("dimension_scores", [])}
 
         dimension_scores: list[DesignDimensionScore] = []
-        for name, global_weight in DESIGN_DIMENSIONS:
-            d = raw_dims.get(name, {})
+        for name, _global_weight in DESIGN_DIMENSIONS:
+            d = raw_by_norm.get(_norm(name))
+            if d is None:
+                # The model did not return this dimension. Mark it not-evaluated
+                # rather than emitting a silent 5.0 that masquerades as a real
+                # "mediocre" score and skews the weighted average.
+                dimension_scores.append(DesignDimensionScore(
+                    dimension_name=name, score=0.0, is_na=True,
+                    rationale="Not evaluated — no dimension score returned for this journey.",
+                    recommendations=[],
+                ))
+                continue
             dimension_scores.append(DesignDimensionScore(
                 dimension_name=name,
                 score=float(d.get("score", 5.0)),
@@ -420,7 +531,11 @@ Also provide:
             total_active_weight = sum(w for w, _ in non_na_pairs)
             overall = sum(w * score / total_active_weight for w, score in non_na_pairs)
         else:
-            overall = 5.0
+            # Nothing was evaluated (e.g. LLM/JSON failure). Report 0.0 so the run
+            # reads as "no design data" instead of a fabricated 5.0 — the dashboard
+            # hides the design tab when the score is 0.
+            overall = 0.0
+            log.warning("Design audit for %s produced no observable dimensions.", persona.name)
 
         # Normalise step_evaluations: rename 'observation' → matches dashboard expectation
         raw_step_evals = []
