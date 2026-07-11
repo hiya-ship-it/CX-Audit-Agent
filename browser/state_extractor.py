@@ -24,6 +24,9 @@ class PageState:
     # True when a search input is focused AND already has typed text — means the
     # search suggestion drawer is likely open.  NOT an overlay; handled separately.
     search_suggestions_active: bool = False
+    # True when the current viewport contains a loan/EMI calculator the persona
+    # could set to their own numbers (drives the proactive engagement nudge).
+    has_calculator: bool = False
 
     def elements_block(self) -> str:
         if not self.viewport_elements:
@@ -192,6 +195,51 @@ _VISIBLE_TEXT_JS = """
 }
 """
 
+_CALCULATOR_JS = """
+() => {
+    const vpH = window.innerHeight, vpW = window.innerWidth;
+    function inVP(el){
+        const r = el.getBoundingClientRect();
+        return r.bottom > 0 && r.top < vpH && r.right > 0 && r.left < vpW &&
+               r.width > 0 && r.height > 0;
+    }
+
+    // (a) An adjustable numeric control visible in the viewport (native range,
+    //     ARIA slider, numeric field). Custom div-sliders may not match — that's
+    //     fine: the wording signal (b) still flags the calculator for engagement.
+    const controlSel = 'input[type="range"],[role="slider"],[aria-valuenow],' +
+                       'input[type="number"],input[inputmode="numeric"],input[inputmode="decimal"]';
+    let hasControl = false;
+    for (const el of document.querySelectorAll(controlSel)) {
+        if (inVP(el)) { hasControl = true; break; }
+    }
+
+    // (b) Calculator wording actually visible in the viewport.
+    const strongKw = /calculat/i;                                   // "calculator" / "calculate"
+    const tenureKw = /(emi|tenure|per month|monthly instal|interest rate|loan amount)/i;
+    let hasTenureKw = false, labelled = false, i = 0;
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+        if (++i > 6000) break;
+        const el = node.parentElement; if (!el) continue;
+        const t = (node.textContent || '').trim();
+        if (t.length < 2) continue;
+        const strong = strongKw.test(t);
+        const tenure = tenureKw.test(t);
+        if (!strong && !tenure) continue;
+        if (!inVP(el)) continue;
+        if (tenure) hasTenureKw = true;
+        // Only the literal word "calculat(or/e)" in view counts as a labelled
+        // calculator — an EMI mention alone (marketing copy) does not, unless it
+        // is paired with an actual adjustable control (handled below).
+        if (strong) labelled = true;
+    }
+
+    return { has_calculator: labelled || (hasControl && hasTenureKw) };
+}
+"""
+
 _SCROLL_INFO_JS = """
 () => ({
     scrollTop: Math.round(window.scrollY || document.documentElement.scrollTop),
@@ -321,6 +369,12 @@ async def extract_state(page) -> PageState:
     except Exception:
         visible_text = ""
 
+    try:
+        calc_info      = await page.evaluate(_CALCULATOR_JS)
+        has_calculator = bool(calc_info.get("has_calculator", False))
+    except Exception:
+        has_calculator = False
+
     return PageState(
         url                      = url,
         title                    = title,
@@ -332,4 +386,5 @@ async def extract_state(page) -> PageState:
         at_bottom                = at_bottom,
         visible_text             = visible_text,
         search_suggestions_active = search_suggestions_active,
+        has_calculator           = has_calculator,
     )

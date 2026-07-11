@@ -16,6 +16,7 @@ The loop each step:
 from __future__ import annotations
 
 import asyncio
+import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -460,21 +461,44 @@ COORDINATES (x, y) — use when no marker is visible at your target:
 
 For scroll_down, scroll_up, navigate_back, dismiss_overlay, done → set x=null, y=null, marker=null.
 
-CALCULATORS — SLIDERS AND DROPDOWNS:
-Many loan/EMI calculators are driven by sliders and dropdowns. You CAN operate them:
-  • SLIDER — to change a loan amount or tenure slider, use action=drag: set x,y on the
-    slider's thumb (the draggable knob) and x2,y2 where you want to drag it (further
-    right = higher value). Then read the recalculated EMI/interest that appears.
-  • DROPDOWN / TENURE PICKER — use action=select: set x,y on the dropdown and value to
-    the exact option you want (e.g. "24 months"). If it's a custom dropdown that opens a
-    list, you may instead just click it and pick the visible option on the next step.
-  • NUMERIC FIELD — if the calculator has an editable amount box, action=type works too.
-Use whichever matches what you actually see — exactly as a real person would.
+CALCULATORS — MAKE THEM SHOW *YOUR* NUMBERS:
+When you reach a loan / EMI / eligibility calculator that relates to what you came for,
+a real person with a specific need does NOT just glance at the default figures and move
+on. The numbers shown by default (e.g. ₹2,00,000 over 60 months) are generic — they are
+NOT your situation. Someone who came wanting a specific amount will set the calculator to
+THEIR amount and tenure, then read what EMI / interest / total it produces and judge
+whether that actually works for them. Do the same:
+  1. CHANGE the loan amount to the amount YOU actually want (from your goal above).
+  2. CHANGE the tenure/duration to what suits you, if it is shown.
+  3. READ the recalculated EMI / interest / total, and react to it as this person would —
+     is it affordable? acceptable? Does it answer what you came to find out?
+How to operate the controls (use whichever the calculator actually gives you):
+  • NUMERIC FIELD — an editable amount box: action=type your amount.
+  • DROPDOWN / TENURE PICKER — action=select (set value to e.g. "24 months"); or click it
+    and pick the option on the next step.
+  • SLIDER — action=drag: x,y on the thumb, x2,y2 where you want it (further right = higher).
+  • STEPPER / PRESET CHIPS — tap the +/- buttons or the preset closest to your amount.
+Skipping the calculator, or leaving its default numbers untouched, is exactly the kind of
+shallow interaction a real person with a real need would NOT do.
 
 SCROLL RULE: only scroll when the thing you want is NOT visible in the current screenshot.
 If you can see it — use its marker number (or coordinates) directly. Do NOT scroll past visible content.
 
 """
+
+
+def _extract_target_amount(intent: str) -> str:
+    """Pull the persona's target money figure out of their goal text, e.g.
+    'gold loan of ₹50,000' → '₹50,000', '2 lakh personal loan' → '2 lakh'.
+    Returns '' when no clear amount is stated."""
+    if not intent:
+        return ""
+    m = re.search(
+        r'(₹\s?[\d,]+(?:\.\d+)?\s?(?:lakh|crore|thousand|k)?'
+        r'|\b\d[\d,]*\s?(?:lakh|crore|thousand)\b)',
+        intent, re.I,
+    )
+    return re.sub(r'\s+', ' ', m.group(1)).strip() if m else ""
 
 
 def build_step_prompt(state, memory: JourneyMemory, step_num: int) -> str:
@@ -568,11 +592,12 @@ def build_step_prompt(state, memory: JourneyMemory, step_num: int) -> str:
 
     visible_text_block = ""  # Removed — model reads the screenshot directly, same as a human
 
-    # Detect if the previous step typed into a field — if so, the screen likely
-    # shows a result (EMI, eligibility, premium, etc.) that the persona should
+    # Detect if the previous step CHANGED a calculator value (typed an amount,
+    # dragged a slider, or picked a tenure) — if so, the screen likely shows an
+    # updated result (EMI, eligibility, premium, etc.) that the persona should
     # read and process against their specific situation before acting.
     calculator_read_note = ""
-    if prev_step and prev_step.action == "type":
+    if prev_step and prev_step.action in ("type", "drag", "select"):
         # Pull persona-specific context to make the processing prompt concrete
         _pd = memory.persona_data or {}
         _constraints = _pd.get("constraints", "") or getattr(memory, "constraints", "") or ""
@@ -584,7 +609,7 @@ def build_step_prompt(state, memory: JourneyMemory, step_num: int) -> str:
         _constraint_hint = f"Your specific constraints: {_constraints[:200]}. " if _constraints else ""
 
         calculator_read_note = (
-            f"\n📊 YOUR LAST ACTION ENTERED DATA — THE SCREEN HAS UPDATED.\n"
+            f"\n📊 YOU JUST CHANGED A CALCULATOR VALUE — THE SCREEN HAS UPDATED.\n"
             f"Before doing ANYTHING else, read what the screen is now showing you.\n"
             f"{_income_hint}{_constraint_hint}\n"
             f"Ask yourself these questions RIGHT NOW against YOUR specific situation:\n"
@@ -596,6 +621,30 @@ def build_step_prompt(state, memory: JourneyMemory, step_num: int) -> str:
             f"Only move to your next action after genuinely sitting with the result.\n"
         )
 
+    # Proactive calculator engagement: when a calculator is on screen and the
+    # persona is NOT already mid-interaction with it, prompt the realistic instinct
+    # to set it to their own numbers and read the output. Fires once — it goes quiet
+    # as soon as the persona changes a value (type/drag/select), handing off to the
+    # calculator_read_note above.
+    calculator_engage_note = ""
+    _prev_action = prev_step.action if prev_step else ""
+    if getattr(state, "has_calculator", False) and _prev_action not in ("type", "drag", "select"):
+        _target = _extract_target_amount(memory.persona_intent)
+        _target_line = (
+            f"You came here wanting {_target}. " if _target
+            else "You came here with a specific amount and timeline in mind. "
+        )
+        calculator_engage_note = (
+            f"\n🧮 THERE IS A CALCULATOR ON THIS SCREEN.\n"
+            f"{_target_line}The figures on it right now are generic defaults — NOT your situation.\n"
+            f"A real person with your specific need would not just look at it and scroll past. They\n"
+            f"would set it to THEIR numbers and see what it means for them. Change the loan amount\n"
+            f"(and tenure, if shown) to match what YOU actually want, then read the EMI / interest /\n"
+            f"total it produces and react to whether that works for you. Use the amount box (type),\n"
+            f"the tenure dropdown (select), the +/- steppers or preset chips, or the slider (drag) —\n"
+            f"whichever this calculator gives you. Do this BEFORE deciding to move on or leave.\n"
+        )
+
     return f"""YOUR JOURNEY SO FAR — Step {step_num + 1}
 {history}
 
@@ -605,7 +654,7 @@ WHAT YOU SEE RIGHT NOW
 URL: {state.url}
 Title: {state.title}
 {scroll_ctx}
-{overlay_warning}{bottom_warning}{frustration_note}{stagnation_note}{calculator_read_note}{visible_text_block}
+{overlay_warning}{bottom_warning}{frustration_note}{stagnation_note}{calculator_engage_note}{calculator_read_note}{visible_text_block}
 [Screenshot attached — orange numbered circles mark every interactive element]
 
 To tap a marked element: set "marker" to its number AND set x,y as a rough estimate.
