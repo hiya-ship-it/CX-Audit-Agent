@@ -19,6 +19,7 @@ import io
 import logging
 import random
 import re
+import shutil
 import time
 from pathlib import Path
 from typing import Optional
@@ -231,13 +232,37 @@ class BrowserController:
                 await self._context.close()
             except Exception as exc:
                 log.warning("Browser context close failed: %s", exc)
-            if video:
-                try:
-                    dest = config.VIDEOS_DIR / f"{self._slug}.webm"
-                    await video.save_as(str(dest))   # waits until the video is fully written
-                    self.video_path = str(dest)
-                except Exception as exc:
-                    log.warning("Could not save journey video for %s: %s", self._slug, exc)
+
+            # Consolidate the journey recording into a flat videos/<slug>.webm so
+            # the report + dashboard can reference it directly (no server fallback
+            # needed). Do NOT rely solely on self._page.video: multi-page journeys
+            # and popups leave that handle pointing at the wrong page (or None),
+            # which silently lost every recording. Playwright writes one raw file
+            # per page under videos/<slug>/; pick the largest (the main journey)
+            # and copy it to the flat path. This is deterministic and only needs
+            # the raw files that context.close() has already finalised.
+            if config.RECORD_VIDEO:
+                dest = config.VIDEOS_DIR / f"{self._slug}.webm"
+                raw_dir = config.VIDEOS_DIR / self._slug
+                raws = (sorted(raw_dir.glob("*.webm"),
+                               key=lambda p: p.stat().st_size, reverse=True)
+                        if raw_dir.is_dir() else [])
+                if raws:
+                    try:
+                        shutil.copy2(str(raws[0]), str(dest))
+                        self.video_path = str(dest)
+                        log.info("Saved journey video for %s → %s", self._slug, dest.name)
+                    except Exception as exc:
+                        log.warning("Could not consolidate journey video for %s: %s", self._slug, exc)
+                elif video is not None:
+                    # No raw file found (rare) — fall back to the page handle.
+                    try:
+                        await video.save_as(str(dest))
+                        self.video_path = str(dest)
+                    except Exception as exc:
+                        log.warning("Could not save journey video for %s: %s", self._slug, exc)
+                else:
+                    log.warning("No screen recording captured for %s", self._slug)
         if self._browser:
             try:
                 await self._browser.close()

@@ -466,6 +466,16 @@ def archive_run(run_id: str) -> Path:
             log.warning("archive_run: screenshots skip %s — %s", slug, _e)
         try:
             src_vid = config.VIDEOS_DIR / f"{slug}.webm"
+            if not src_vid.exists():
+                # Flat file missing (e.g. consolidation failed) — fall back to the
+                # largest raw Playwright recording under videos/<slug>/ so the
+                # archived tile still keeps its screen recording.
+                raw_dir = config.VIDEOS_DIR / slug
+                raws = (sorted(raw_dir.glob("*.webm"),
+                               key=lambda p: p.stat().st_size, reverse=True)
+                        if raw_dir.is_dir() else [])
+                if raws:
+                    src_vid = raws[0]
             if src_vid.exists():
                 arch_vid_dir.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(src_vid, arch_vid_dir / f"{slug}.webm")
