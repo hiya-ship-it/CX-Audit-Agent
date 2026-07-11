@@ -1425,6 +1425,26 @@ function renderFriction(p) {
 
 /* ── Screenshots panel ───────────────────────────────────────────────────── */
 
+function _videoWrapHTML(src) {
+  return `
+    <div class="journey-video-wrap" id="journey-video-wrap">
+      <video class="journey-video" controls src="${esc(src)}"
+        onerror="document.getElementById('journey-video-wrap').style.display='none'"></video>
+      <p class="ss-caption">Full journey screen recording</p>
+    </div>`;
+}
+
+// Fallback for runs whose journey_log has no video_path: ask the server to
+// locate a recording under videos/<slug>/ and render it if found.
+async function _tryVideoFallback(p, videoEl) {
+  const slug = p.sourceSlug || p.slug;
+  if (!slug) return;
+  const data = await fetchJSON(`${CFG.api}/video/${encodeURIComponent(slug)}`);
+  if (!data?.video_url) return;
+  if (STATE.activePersona !== p) return;   // user switched personas while fetching
+  videoEl.innerHTML = _videoWrapHTML(data.video_url);
+}
+
 function renderScreenshots(p) {
   const shots = p.screenshots || [];
   STATE.ssIndex = 0;
@@ -1437,14 +1457,12 @@ function renderScreenshots(p) {
   // and navigating thumbnails doesn't reset video playback.
   const videoEl = qs('#screenshots-video');
   if (p.videoRel) {
-    videoEl.innerHTML = `
-      <div class="journey-video-wrap" id="journey-video-wrap">
-        <video class="journey-video" controls src="${esc(p.videoRel)}"
-          onerror="document.getElementById('journey-video-wrap').style.display='none'"></video>
-        <p class="ss-caption">Full journey screen recording</p>
-      </div>`;
+    videoEl.innerHTML = _videoWrapHTML(p.videoRel);
   } else {
     videoEl.innerHTML = '';
+    // No recorded path (e.g. runs made before the recording-pipeline fix).
+    // Ask the server to locate a recording for this persona's slug.
+    if (API_MODE) _tryVideoFallback(p, videoEl);
   }
 
   if (!shots.length) {

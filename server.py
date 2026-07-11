@@ -64,6 +64,26 @@ def serve_logs(path):
     return send_from_directory(str(config.LOGS_DIR), path)
 
 
+@app.route("/api/video/<slug>")
+def find_video(slug):
+    """Locate a screen recording for a persona slug — the dashboard's fallback
+    when journey_log.video_path is empty (e.g. runs recorded before the
+    recording-pipeline fix). Returns the consolidated videos/<slug>.webm if it
+    exists, else the newest raw Playwright recording under videos/<slug>/."""
+    if "/" in slug or "\\" in slug or ".." in slug:
+        return jsonify({"video_url": None}), 400
+    vids = config.VIDEOS_DIR
+    flat = vids / f"{slug}.webm"
+    if flat.exists():
+        return jsonify({"video_url": f"/videos/{slug}.webm"})
+    sub = vids / slug
+    if sub.is_dir():
+        webms = sorted(sub.glob("*.webm"), key=lambda p: p.stat().st_mtime, reverse=True)
+        if webms:
+            return jsonify({"video_url": f"/videos/{slug}/{webms[0].name}"})
+    return jsonify({"video_url": None}), 404
+
+
 # ── Personas API ──────────────────────────────────────────────────────────────
 
 @app.route("/api/personas", methods=["GET"])
