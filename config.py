@@ -43,6 +43,13 @@ DEBUG_MODE       = os.getenv("DEBUG_MODE", "false").lower() == "true"
 PAGE_TIMEOUT    = 30_000   # ms
 ELEMENT_TIMEOUT = 5_000    # ms
 
+# Fraction of the viewport height moved per scroll_down / scroll_up. At 0.5 each
+# scroll advances half a screen, so consecutive frames overlap by 50% and any
+# component up to half a screen tall is fully visible in at least one frame —
+# never jumped over. Raise toward 0.75 for faster/coarser paging, lower for even
+# more careful steps.
+SCROLL_FRACTION = max(0.25, min(0.9, float(os.getenv("SCROLL_FRACTION", "0.5"))))
+
 # ── Human-like timing (BRD Principle 4) ──────────────────────────────────────
 ACTION_DELAY_MIN_MS = int(os.getenv("ACTION_DELAY_MIN_MS",  "700"))   # ms between actions
 ACTION_DELAY_MAX_MS = int(os.getenv("ACTION_DELAY_MAX_MS", "1800"))   # ms between actions

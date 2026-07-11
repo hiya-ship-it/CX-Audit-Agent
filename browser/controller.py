@@ -486,9 +486,13 @@ class BrowserController:
             pass
         if direction in ("down", "up"):
             sign = 1 if direction == "down" else -1
-            # Single deliberate scroll: 75 % of viewport — visible, not a micro-jitter
+            # Deliberate partial-viewport scroll: config.SCROLL_FRACTION (default
+            # 0.5) keeps a generous overlap between consecutive frames so a
+            # component sitting between them is never skipped over. Visible, not a
+            # micro-jitter, but never a full-screen leap.
+            frac = getattr(config, "SCROLL_FRACTION", 0.5)
             await self._page.evaluate(
-                f"window.scrollBy({{top: {sign} * Math.round(window.innerHeight * 0.75), behavior: 'smooth'}})"
+                f"window.scrollBy({{top: {sign} * Math.round(window.innerHeight * {frac}), behavior: 'smooth'}})"
             )
             await asyncio.sleep(random.uniform(0.8, 1.2))
         else:
