@@ -419,10 +419,8 @@ async function init() {
 
   if (masterData) {
     const tEl = qs('#header-target');
-    const dEl = qs('#header-date');
     const mEl = qs('#header-model');
     if (masterData.target) tEl.textContent = masterData.target.replace(/https?:\/\//, '');
-    if (masterData.date)   dEl.textContent = masterData.date.split(' ')[0];
     if (masterData.model)  mEl.textContent = masterData.model;
   }
 
