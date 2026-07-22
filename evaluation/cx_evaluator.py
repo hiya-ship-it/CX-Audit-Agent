@@ -59,6 +59,14 @@ _MAX_SCREENSHOTS = 12   # max images sent to OpenAI
 _JPEG_QUALITY    = 72
 _MAX_PX          = 1280
 
+# Per-step scoring is the token-heavy half of the evaluation: every step emits 20
+# dimension scores *with rationales*. A 50-step journey therefore asks for ~1000
+# rationales in a single response, which exceeds the model's output-token ceiling
+# and comes back truncated (→ ValueError → empty result → every dimension silently
+# defaults to 5.0). Scoring is batched over steps so no single response can hit the
+# ceiling, and the journey-level synthesis runs as its own small call.
+_STEP_BATCH_SIZE = 10
+
 
 # ── Output dataclass ──────────────────────────────────────────────────────────
 
@@ -310,6 +318,35 @@ def _build_schema() -> dict:
 _SCHEMA = _build_schema()
 
 
+def _subset_schema(keys: list[str]) -> dict:
+    """
+    Build a standalone schema containing only `keys` from _SCHEMA.
+
+    Derived from _SCHEMA rather than redeclared so the batched calls can never
+    drift from the canonical field definitions.
+    """
+    props = {
+        k: json.loads(json.dumps(v))
+        for k, v in _SCHEMA["properties"].items()
+        if k in keys
+    }
+    return {
+        "type":                 "object",
+        "properties":           props,
+        "required":             list(props.keys()),
+        "additionalProperties": False,
+    }
+
+
+# Schema for one batch of per-step scoring.
+_STEP_SCHEMA = _subset_schema(["step_evaluations"])
+
+# Schema for the journey-level synthesis (everything except per-step scoring).
+_SYNTHESIS_SCHEMA = _subset_schema(
+    [k for k in _SCHEMA["properties"] if k != "step_evaluations"]
+)
+
+
 # ── Screenshot helpers ────────────────────────────────────────────────────────
 
 def _compress(path: Path) -> Optional[str]:
@@ -361,6 +398,36 @@ def _collect_screenshot_images(memory: JourneyMemory, max_count: int = _MAX_SCRE
     return blocks
 
 
+def _collect_images_for_steps(steps: list, max_count: int = _STEP_BATCH_SIZE) -> list[dict]:
+    """
+    Screenshots for a specific batch of steps (not the whole journey).
+
+    Same output format as _collect_screenshot_images, but scoped to the steps the
+    batch is actually scoring so each call sees the screens it is grading.
+    """
+    with_screenshots = [s for s in steps if s.screenshot and Path(s.screenshot).exists()]
+    if not with_screenshots:
+        return []
+
+    total = len(with_screenshots)
+    if total <= max_count:
+        selected = with_screenshots
+    else:
+        step_size = total / max_count
+        selected  = [with_screenshots[int(i * step_size)] for i in range(max_count)]
+
+    blocks = []
+    for step in selected:
+        b64 = _compress(Path(step.screenshot))
+        if b64:
+            blocks.append({
+                "type":      "input_image",
+                "image_url": f"data:image/jpeg;base64,{b64}",
+                "detail":    "low",
+            })
+    return blocks
+
+
 # ── Main evaluator class ──────────────────────────────────────────────────────
 
 class CXEvaluator:
@@ -371,11 +438,109 @@ class CXEvaluator:
     # ── Public API ────────────────────────────────────────────────────────────
 
     async def evaluate(self, memory: JourneyMemory, persona: Persona) -> CXAuditResult:
-        """Run the CX evaluation and return a CXAuditResult."""
-        images = _collect_screenshot_images(memory)
-        prompt = self._build_prompt(memory, persona)
-        raw    = await self._call_llm(prompt, images)
+        """
+        Run the CX evaluation and return a CXAuditResult.
+
+        Per-step scoring is batched (_STEP_BATCH_SIZE steps per call) so no single
+        response can exceed the model's output-token ceiling; the journey-level
+        synthesis is a separate call. The batch results are merged back into one
+        raw dict with exactly the shape _parse_and_aggregate already expects, so
+        aggregation and the emitted report are unchanged.
+        """
+        step_evaluations = await self._evaluate_steps_batched(memory, persona)
+        synthesis        = await self._synthesise(memory, persona, step_evaluations)
+
+        # Journey-level fields from the synthesis call; step scores from the batches.
+        raw = dict(synthesis)
+        raw["step_evaluations"] = step_evaluations
+
         return self._parse_and_aggregate(raw, memory, persona)
+
+    # ── Batched per-step scoring ──────────────────────────────────────────────
+
+    async def _evaluate_steps_batched(
+        self,
+        memory: JourneyMemory,
+        persona: Persona,
+    ) -> list[dict]:
+        """
+        Score every step in batches and return the merged step_evaluations list.
+
+        Batches are run sequentially to stay within rate limits. A batch that fails
+        is logged and skipped — the remaining batches still contribute, so a partial
+        failure degrades the report instead of blanking it.
+        """
+        steps = list(memory.steps)
+        if not steps:
+            return []
+
+        batches = [
+            steps[i:i + _STEP_BATCH_SIZE]
+            for i in range(0, len(steps), _STEP_BATCH_SIZE)
+        ]
+        log.info(
+            "CX evaluation: scoring %d steps in %d batch(es) of up to %d",
+            len(steps), len(batches), _STEP_BATCH_SIZE,
+        )
+
+        merged: dict[int, dict] = {}
+        for idx, batch in enumerate(batches, start=1):
+            prompt = self._build_step_batch_prompt(memory, persona, batch, idx, len(batches))
+            images = _collect_images_for_steps(batch)
+            try:
+                raw = await self._call_llm(
+                    prompt,
+                    images,
+                    schema_name="cx_step_scores",
+                    schema=_STEP_SCHEMA,
+                )
+            except Exception as exc:                       # defensive: _call_llm already traps
+                log.error("CX step batch %d/%d failed: %s", idx, len(batches), exc)
+                continue
+
+            expected = {s.step_number for s in batch}
+            returned = raw.get("step_evaluations", []) or []
+            for se in returned:
+                num = se.get("step_number")
+                # Ignore steps outside this batch and duplicates — either would
+                # skew the weighted aggregation.
+                if num in expected and num not in merged:
+                    merged[num] = se
+
+            if not returned:
+                log.warning("CX step batch %d/%d returned no step evaluations", idx, len(batches))
+            elif len(merged) < sum(len(b) for b in batches[:idx]):
+                log.warning(
+                    "CX step batch %d/%d: expected %d steps, have %d scored so far",
+                    idx, len(batches), sum(len(b) for b in batches[:idx]), len(merged),
+                )
+
+        if not merged:
+            log.error("CX evaluation: no step scores were produced by any batch")
+
+        return [merged[k] for k in sorted(merged)]
+
+    # ── Journey-level synthesis ───────────────────────────────────────────────
+
+    async def _synthesise(
+        self,
+        memory: JourneyMemory,
+        persona: Persona,
+        step_evaluations: list[dict],
+    ) -> dict:
+        """
+        Produce the journey-level fields (issues, delight points, emotional arc,
+        narrative, verdict, recommendations) in a single small call, grounded in
+        the per-step scores already computed.
+        """
+        prompt = self._build_synthesis_prompt(memory, persona, step_evaluations)
+        images = _collect_screenshot_images(memory)
+        return await self._call_llm(
+            prompt,
+            images,
+            schema_name="cx_journey_synthesis",
+            schema=_SYNTHESIS_SCHEMA,
+        )
 
     # ── Prompt construction ───────────────────────────────────────────────────
 
@@ -483,9 +648,212 @@ visible content when possible. Score rigorously — a 7 means genuinely good, 5 
 mediocre, 3 means problematic.
 """
 
+    # ── Batched prompt construction ───────────────────────────────────────────
+
+    @staticmethod
+    def _dim_list() -> str:
+        return "\n".join(
+            f"  {i+1:02d}. {name} (weight {int(w*100)}%)"
+            for i, (name, w) in enumerate(CX_DIMENSIONS)
+        )
+
+    @staticmethod
+    def _journey_text(memory: JourneyMemory) -> str:
+        steps_summary = []
+        for s in memory.steps:
+            line = (
+                f"  Step {s.step_number:02d} | {s.action} | {s.target or s.url[:60]} | "
+                f"success={s.success} | emotion={s.emotion} | state_of_mind={s.state_of_mind[:80] if s.state_of_mind else ''}"
+            )
+            steps_summary.append(line)
+        return "\n".join(steps_summary) or "  (no steps recorded)"
+
+    def _build_step_batch_prompt(
+        self,
+        memory: JourneyMemory,
+        persona: Persona,
+        batch: list,
+        batch_index: int,
+        batch_total: int,
+    ) -> str:
+        """Prompt for scoring one batch of steps. The full journey log is included
+        for context, but only the batch's steps are to be scored."""
+        batch_numbers = [s.step_number for s in batch]
+        batch_detail = "\n".join(
+            f"  Step {s.step_number:02d} | {s.action} | {s.target or s.url[:60]} | "
+            f"success={s.success} | emotion={s.emotion} | "
+            f"state_of_mind={s.state_of_mind[:200] if s.state_of_mind else ''}"
+            for s in batch
+        )
+
+        return f"""You are an expert CX researcher auditing a persona's journey on a financial services website.
+
+You are scoring BATCH {batch_index} OF {batch_total} of this journey. Score ONLY the steps listed
+under STEPS TO SCORE. The full journey log is provided for context only.
+
+PERSONA
+-------
+Name:   {persona.name}
+Intent: {persona.intent}
+Profile: {json.dumps(memory.persona_data, ensure_ascii=False)[:500]}
+
+JOURNEY CONTEXT (full journey — for context only, do NOT score these)
+---------------------------------------------------------------------
+Steps completed:  {memory.step_count}
+Steps failed:     {memory.failure_count}
+Terminal reason:  {memory.terminal_reason}
+Journey completed: {memory.completed}
+
+{self._journey_text(memory)}
+
+STEPS TO SCORE (this batch only — step numbers {batch_numbers})
+---------------------------------------------------------------
+{batch_detail}
+
+SCREENSHOTS
+-----------
+{len(_collect_images_for_steps(batch))} screenshots from the steps in THIS batch are attached.
+
+CX DIMENSIONS (with global weights for reference only)
+------------------------------------------------------
+{self._dim_list()}
+
+EVALUATION INSTRUCTIONS
+-----------------------
+Return step_evaluations containing EXACTLY {len(batch)} entries — one for each step number
+in {batch_numbers}. Do not include any other step numbers.
+
+For each step:
+  - step_number: integer (must be one of {batch_numbers})
+  - overall_step_quality: 0–10 (holistic quality of this specific step)
+  - dimension_scores: array of 20 objects, one per dimension listed above
+    - dimension_name: exact string from the list above
+    - score: 0–10
+    - is_na: true if the dimension was not observable in that step
+    - rationale: 1–2 sentence explanation
+  - key_cx_finding: the single most important CX observation for this step
+
+DO NOT aggregate scores yourself — provide raw per-step scores only. Aggregation is done
+in post-processing.
+
+Be specific and evidence-based. Score rigorously — a 7 means genuinely good, 5 means
+mediocre, 3 means problematic. Keep each rationale to 1–2 sentences.
+"""
+
+    def _build_synthesis_prompt(
+        self,
+        memory: JourneyMemory,
+        persona: Persona,
+        step_evaluations: list[dict],
+    ) -> str:
+        """Prompt for the journey-level synthesis, grounded in the batch scores."""
+        # Compact digest of the per-step scoring so the synthesis is evidence-based
+        # without re-sending every rationale.
+        digest_lines = []
+        for se in step_evaluations:
+            worst = sorted(
+                (
+                    d for d in se.get("dimension_scores", [])
+                    if not d.get("is_na", False)
+                ),
+                key=lambda d: d.get("score", 10),
+            )[:3]
+            worst_txt = ", ".join(
+                f"{d.get('dimension_name', '')}={d.get('score', '')}" for d in worst
+            )
+            digest_lines.append(
+                f"  Step {se.get('step_number', 0):02d} | quality={se.get('overall_step_quality', '')} | "
+                f"weakest: {worst_txt} | {se.get('key_cx_finding', '')}"
+            )
+        digest = "\n".join(digest_lines) or "  (no per-step scores were produced)"
+
+        return f"""You are an expert CX researcher auditing a persona's journey on a financial services website.
+
+Per-step scoring has already been completed. Your job now is the JOURNEY-LEVEL SYNTHESIS.
+Do NOT re-score individual steps.
+
+PERSONA
+-------
+Name:   {persona.name}
+Intent: {persona.intent}
+Profile: {json.dumps(memory.persona_data, ensure_ascii=False)[:500]}
+
+JOURNEY SUMMARY
+---------------
+Steps completed:  {memory.step_count}
+Steps failed:     {memory.failure_count}
+Terminal reason:  {memory.terminal_reason}
+Journey completed: {memory.completed}
+Visited URLs: {len(memory.visited_urls)}
+
+STEP LOG
+--------
+{self._journey_text(memory)}
+
+PER-STEP SCORING ALREADY COMPLETED (use as evidence)
+-----------------------------------------------------
+{digest}
+
+SCREENSHOTS
+-----------
+{len(_collect_screenshot_images(memory))} screenshots are attached (evenly sampled from the journey).
+
+CX DIMENSIONS (for reference when attributing issues)
+------------------------------------------------------
+{self._dim_list()}
+
+REQUIRED OUTPUT FIELDS
+----------------------
+1. emotional_journey: 6–12 stage arc of the persona's emotional progression
+   - stage: label (e.g. "Arrival", "Exploration", "Confusion", "Recovery", "Decision", "Exit")
+   - emotion: the dominant emotion (e.g. "curious", "frustrated", "hopeful")
+   - trigger: what caused this emotional state
+
+2. persona_emotional_narrative: 3–4 paragraph narrative describing the persona's complete
+   emotional experience from first impression to exit. Written in third person. Must reference
+   specific moments from the journey log.
+
+3. objective_scores: computed metrics (0–1 scale except where noted):
+   - task_completion_rate: fraction of the persona's goal achieved (0–1)
+   - navigation_efficiency: 1 / (1 + navigation_errors), higher is better
+   - error_encounter_rate: steps_failed / total_steps
+   - time_to_first_relevant_content: estimated steps before first relevant content (integer)
+
+4. issues: list of CX issues found
+   - severity: "critical" | "major" | "minor"
+   - dimension: which of the 20 dimensions this maps to
+   - description: specific, evidence-based observation
+   - recommendation: actionable fix
+   - location: page/screen area where the issue occurs (e.g. "Personal Loan homepage", "EMI calculator")
+   - impact: user-impact statement (e.g. "Anxious users like this persona will abandon before completing")
+
+5. delight_points: list of positive CX moments observed (strings)
+
+6. tldr: 2–3 sentence TL;DR summary of the overall CX experience for this persona.
+
+7. journey_verdict: Single sentence — did this journey succeed for this persona? Why or why not?
+
+8. key_takeaways: 3–6 bullet strings — the most important, actionable findings.
+
+9. recommendations: prioritised action list (max 10 items)
+   - priority: "P1" (critical, fix immediately) | "P2" (important, next sprint) | "P3" (nice-to-have)
+   - area: which site area / dimension this relates to
+   - action: specific, concrete recommendation
+
+Be specific and evidence-based. Reference actual step numbers, observed emotions, and
+visible content when possible. Ground your issues and delight points in the per-step
+scoring digest above.
+"""
+
     # ── LLM call ──────────────────────────────────────────────────────────────
 
-    async def _call_llm(self, prompt: str, images: list[dict]) -> dict:
+    async def _call_llm(
+        self,
+        prompt: str,
+        images: list[dict],
+        schema_name: str = "cx_audit_result",
+        schema: Optional[dict] = None,
+    ) -> dict:
         input_content: list[dict] = [{"type": "input_text", "text": prompt}] + images
         try:
             # No max_output_tokens cap: a 30-step journey × 20 dimensions × rationale
@@ -495,11 +863,11 @@ mediocre, 3 means problematic.
             return await self._client.create_json(
                 system_prompt = "You are an expert CX researcher. Respond strictly with the requested JSON.",
                 input_content = input_content,
-                schema_name   = "cx_audit_result",
-                schema        = _SCHEMA,
+                schema_name   = schema_name,
+                schema        = schema if schema is not None else _SCHEMA,
             )
         except Exception as exc:
-            log.error("CX evaluation LLM call failed: %s", exc)
+            log.error("CX evaluation LLM call failed (%s): %s", schema_name, exc)
             return {}
 
     # ── Aggregation (BRD Step 2.4) ────────────────────────────────────────────
