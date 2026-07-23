@@ -17,39 +17,52 @@ from openai import APIConnectionError, APIStatusError, APITimeoutError, OpenAI, 
 import config
 
 
-# ── Pricing table (USD per 1M tokens) ────────────────────────────────────────
-
-_MODEL_PRICING: dict[str, tuple[float, float]] = {
-    # (input_price_per_1M_USD, output_price_per_1M_USD)
-    "gpt-4.1":             (2.00,  8.00),
-    "gpt-4.1-mini":        (0.40,  1.60),
-    "gpt-4.1-nano":        (0.10,  0.40),
-    "gpt-4o":              (2.50, 10.00),
-    "gpt-4o-mini":         (0.15,  0.60),
-    "gpt-4-turbo":         (10.00, 30.00),
-    "gpt-4-turbo-preview": (10.00, 30.00),
-    "gpt-4":               (30.00, 60.00),
-    "gpt-3.5-turbo":       (0.50,  1.50),
-}
-_INR_PER_USD = 95.0
+# ── Pricing (INR per 1M tokens) ───────────────────────────────────────────────
+# Flat INR rates for the model this system runs on, applied directly to the token
+# counts. Previously cost was looked up in a USD-per-model table and converted; a
+# model name absent from that table fell through to 0.0, which is why every run's
+# tile showed ₹0.00. Rates below are per 1,000,000 tokens.
+_INR_PER_1M_INPUT        = 165.19    # uncached prompt tokens
+_INR_PER_1M_CACHED_INPUT = 16.52     # prompt tokens served from cache
+_INR_PER_1M_OUTPUT       = 1321.52   # completion tokens
 
 
-def compute_cost_inr(input_tokens: int, output_tokens: int, model: str) -> float:
-    """Return the estimated cost in INR for a completed LLM call."""
-    pricing = _MODEL_PRICING.get(model)
-    if not pricing:
-        for key in sorted(_MODEL_PRICING, key=len, reverse=True):
-            if model.startswith(key):
-                pricing = _MODEL_PRICING[key]
-                break
-    if not pricing:
-        return 0.0
-    input_price, output_price = pricing
-    cost_usd = (
-        input_tokens  / 1_000_000 * input_price
-        + output_tokens / 1_000_000 * output_price
+def compute_cost_inr(
+    input_tokens: int,
+    output_tokens: int,
+    model: str = "",
+    cached_input_tokens: int = 0,
+) -> float:
+    """Return the estimated cost in INR for a completed LLM call.
+
+    `input_tokens` is the total prompt tokens (cached + uncached), matching the
+    OpenAI usage object; `cached_input_tokens` is the cached subset, billed at the
+    lower cached rate. `model` is accepted for backward compatibility but no longer
+    affects the rate.
+    """
+    uncached_input = max(0, input_tokens - cached_input_tokens)
+    cost = (
+        uncached_input        / 1_000_000 * _INR_PER_1M_INPUT
+        + cached_input_tokens / 1_000_000 * _INR_PER_1M_CACHED_INPUT
+        + output_tokens       / 1_000_000 * _INR_PER_1M_OUTPUT
     )
-    return round(cost_usd * _INR_PER_USD, 4)
+    return round(cost, 4)
+
+
+def _cached_tokens_from_usage(usage: Any) -> int:
+    """Extract cached prompt-token count from an OpenAI usage object.
+
+    Returns 0 when the field is absent (older responses, non-cached calls), so the
+    caller simply bills all input at the full rate.
+    """
+    details = getattr(usage, "input_tokens_details", None)
+    if details is None and isinstance(usage, dict):
+        details = usage.get("input_tokens_details")
+    if details is None:
+        return 0
+    if isinstance(details, dict):
+        return int(details.get("cached_tokens", 0) or 0)
+    return int(getattr(details, "cached_tokens", 0) or 0)
 
 
 class OpenAIResponsesClient:
@@ -68,6 +81,7 @@ class OpenAIResponsesClient:
         )
         self._input_tokens: int = 0
         self._output_tokens: int = 0
+        self._cached_input_tokens: int = 0
 
     async def create_json(
         self,
@@ -114,8 +128,9 @@ class OpenAIResponsesClient:
                 )
                 usage = getattr(response, "usage", None)
                 if usage:
-                    self._input_tokens  += getattr(usage, "input_tokens",  0)
-                    self._output_tokens += getattr(usage, "output_tokens", 0)
+                    self._input_tokens        += getattr(usage, "input_tokens",  0)
+                    self._output_tokens       += getattr(usage, "output_tokens", 0)
+                    self._cached_input_tokens += _cached_tokens_from_usage(usage)
                 return _extract_json_object(response)
 
             except RateLimitError as exc:
@@ -184,15 +199,21 @@ class OpenAIResponsesClient:
         )
         usage = getattr(response, "usage", None)
         if usage:
-            self._input_tokens  += getattr(usage, "input_tokens",  0)
-            self._output_tokens += getattr(usage, "output_tokens", 0)
+            self._input_tokens        += getattr(usage, "input_tokens",  0)
+            self._output_tokens       += getattr(usage, "output_tokens", 0)
+            self._cached_input_tokens += _cached_tokens_from_usage(usage)
         return response
 
     def pop_usage(self) -> dict[str, int]:
         """Return accumulated token counts since last call and reset the counters."""
-        result = {"input_tokens": self._input_tokens, "output_tokens": self._output_tokens}
-        self._input_tokens  = 0
-        self._output_tokens = 0
+        result = {
+            "input_tokens":         self._input_tokens,
+            "output_tokens":        self._output_tokens,
+            "cached_input_tokens":  self._cached_input_tokens,
+        }
+        self._input_tokens        = 0
+        self._output_tokens       = 0
+        self._cached_input_tokens = 0
         return result
 
 
