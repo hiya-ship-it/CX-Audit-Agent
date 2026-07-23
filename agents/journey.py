@@ -1054,6 +1054,7 @@ class JourneyAgent:
                 memory.token_usage.get("input_tokens", 0),
                 memory.token_usage.get("output_tokens", 0),
                 config.OPENAI_MODEL,
+                cached_input_tokens=memory.token_usage.get("cached_input_tokens", 0),
             )
         except Exception:
             memory.cost_inr = None
